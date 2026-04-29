@@ -1,0 +1,47 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary-orange: 255 155 80;
+  --color-primary-orange-soft: 255 178 107;
+  --color-secondary-green: 74 222 128;
+  --color-secondary-blue: 56 189 248;
+  --color-accent-red: 248 113 113;
+  --color-background: 248 249 250;
+  --color-surface: 255 255 255;
+  --color-text-primary: 31 41 55;
+  --color-text-secondary: 107 114 128;
+  --color-border: 229 231 235;
+
+  --radius-card: 1rem;
+  --radius-button: 9999px;
+  --radius-badge: 0.5rem;
+
+  --shadow-card: 0 2px 8px rgba(107, 114, 128, 0.08);
+  --shadow-sidebar: 2px 0 12px rgba(107, 114, 128, 0.06);
+
+  --padding-card: 1.25rem;
+  --gap-grid: 1rem;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100%;
+    font-family: "Plus Jakarta Sans", "Poppins", sans-serif;
+    background-color: rgb(var(--color-background));
+    color: rgb(var(--color-text-primary));
+  }
+}
+
+@layer utilities {
+  .text-muted {
+    color: rgb(var(--color-text-secondary));
+  }
+}
