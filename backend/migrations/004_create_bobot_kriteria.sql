@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS bobot_kriteria (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    versi       VARCHAR(20) NOT NULL,
+    keterangan  TEXT,
+    bobot_c1    DECIMAL(5,2) NOT NULL,
+    bobot_c2    DECIMAL(5,2) NOT NULL,
+    bobot_c3    DECIMAL(5,2) NOT NULL,
+    bobot_c4    DECIMAL(5,2) NOT NULL,
+    bobot_c5    DECIMAL(5,2) NOT NULL,
+    bobot_c6    DECIMAL(5,2) NOT NULL,
+    bobot_c7    DECIMAL(5,2) NOT NULL,
+    bobot_c8    DECIMAL(5,2) NOT NULL,
+    bobot_c9    DECIMAL(5,2) NOT NULL,
+    bobot_c10   DECIMAL(5,2) NOT NULL,
+    bobot_c11   DECIMAL(5,2) NOT NULL,
+    bobot_c12   DECIMAL(5,2) NOT NULL,
+    bobot_c13   DECIMAL(5,2) NOT NULL,
+    is_active   BOOLEAN DEFAULT FALSE,
+    dibuat_oleh UUID REFERENCES users(id),
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
