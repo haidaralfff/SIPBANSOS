@@ -21,6 +21,12 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 		protected := api.Group("")
 		protected.Use(authMiddleware)
 		{
+			kriteriaGroup := protected.Group("/kriteria", middleware.RequireRoles("admin"))
+			{
+				kriteriaGroup.GET("", h.ListKriteria)
+				kriteriaGroup.PUT("/:id", h.UpdateKriteria)
+			}
+
 			importGroup := protected.Group("/import", middleware.RequireRoles("admin", "petugas"))
 			{
 				importGroup.GET("/template", h.DownloadImportTemplate)
@@ -37,6 +43,13 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 				wargaWrite.POST("", h.CreateWarga)
 				wargaWrite.PUT("/:id", h.UpdateWarga)
 				wargaWrite.DELETE("/:id", h.DeleteWarga)
+			}
+
+			reportGroup := protected.Group("/reports", middleware.RequireRoles("admin", "kepala_desa"))
+			{
+				reportGroup.GET("/periods", h.ListPeriode)
+				reportGroup.GET("/ranking", h.ReportRanking)
+				reportGroup.GET("/summary", h.ReportSummary)
 			}
 
 			protected.POST("/saw/run", middleware.RequireRoles("admin", "kepala_desa"), h.RunSAW)

@@ -1,14 +1,9 @@
+import { useMemo, useState } from "react";
 import AppShell from "../../components/layout/AppShell";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-
-const TOP_RANKING = [
-  { name: "Siti Aminah", nik: "3275030102XXXX", score: 0.892, status: "Penerima" },
-  { name: "Budi Santoso", nik: "3275030103XXXX", score: 0.876, status: "Penerima" },
-  { name: "Rina Kartika", nik: "3275030104XXXX", score: 0.861, status: "Cadangan" },
-  { name: "Tono Prasetyo", nik: "3275030105XXXX", score: 0.842, status: "Cadangan" }
-];
+import { useApi } from "../../hooks/useApi";
 
 const STATUS_VARIANT = {
   Penerima: "penerima",
@@ -16,13 +11,45 @@ const STATUS_VARIANT = {
   "Tidak Lolos": "tidak-lolos"
 };
 
-const METRICS = [
-  { label: "Total Alternatif", value: "1.280" },
-  { label: "Kuota Penerima", value: "150" },
-  { label: "Waktu Proses", value: "1.4 detik" }
-];
-
 const SimulasiPage = () => {
+  const { runSAW } = useApi();
+  const [kuota, setKuota] = useState("150");
+  const [results, setResults] = useState([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState("");
+  const [lastRunMs, setLastRunMs] = useState(null);
+
+  const topRanking = useMemo(() => results.slice(0, 4), [results]);
+
+  const metrics = useMemo(() => {
+    const totalAlternatif = results.length;
+    const resolvedKuota = Number.parseInt(kuota, 10) || 0;
+    const waktu = lastRunMs ? `${(lastRunMs / 1000).toFixed(2)} detik` : "-";
+    return [
+      { label: "Total Alternatif", value: totalAlternatif ? String(totalAlternatif) : "-" },
+      { label: "Kuota Penerima", value: resolvedKuota ? String(resolvedKuota) : "-" },
+      { label: "Waktu Proses", value: waktu }
+    ];
+  }, [results, kuota, lastRunMs]);
+
+  const handleRun = async () => {
+    setError("");
+    setIsRunning(true);
+    const start = performance.now();
+    const resolvedKuota = Math.max(Number.parseInt(kuota, 10) || 1, 1);
+    const result = await runSAW({ kuota: resolvedKuota });
+    const elapsed = performance.now() - start;
+    setLastRunMs(elapsed);
+    setIsRunning(false);
+
+    if (!result.success) {
+      setError(result.message || "Gagal menjalankan perhitungan SAW.");
+      return;
+    }
+
+    setResults(result.data);
+  };
+
   return (
     <AppShell title="Simulasi SAW" subtitle="Jalankan perhitungan SAW dan analisis hasil ranking." showRightPanel={false}>
       <Card className="p-4">
@@ -46,16 +73,24 @@ const SimulasiPage = () => {
               <p className="text-xs text-text-secondary">Kuota Penerima</p>
               <input
                 className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-primary"
-                defaultValue="150"
+                value={kuota}
+                onChange={(event) => setKuota(event.target.value)}
               />
             </div>
           </div>
-          <Button>Jalankan Perhitungan</Button>
+          <Button onClick={handleRun} disabled={isRunning}>
+            {isRunning ? "Memproses..." : "Jalankan Perhitungan"}
+          </Button>
         </div>
+        {error ? (
+          <div className="mt-4 rounded-card bg-accent-red/10 px-3 py-2 text-xs text-accent-red">
+            {error}
+          </div>
+        ) : null}
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {METRICS.map((item) => (
+        {metrics.map((item) => (
           <Card key={item.label} className="p-4">
             <p className="text-sm text-text-secondary">{item.label}</p>
             <p className="mt-2 text-2xl font-bold text-text-primary">{item.value}</p>
@@ -76,22 +111,32 @@ const SimulasiPage = () => {
             <thead className="text-xs text-text-secondary">
               <tr>
                 <th className="py-2 font-semibold">Warga</th>
-                <th className="py-2 font-semibold">NIK</th>
+                <th className="py-2 font-semibold">ID</th>
                 <th className="py-2 font-semibold">Skor Vi</th>
                 <th className="py-2 font-semibold">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {TOP_RANKING.map((item) => (
-                <tr key={item.nik}>
-                  <td className="py-3 font-semibold text-text-primary">{item.name}</td>
-                  <td className="py-3 text-text-secondary">{item.nik}</td>
-                  <td className="py-3 font-semibold text-text-primary">{item.score.toFixed(3)}</td>
-                  <td className="py-3">
-                    <Badge variant={STATUS_VARIANT[item.status] || "info"}>{item.status}</Badge>
+              {topRanking.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-sm text-text-secondary">
+                    Belum ada hasil perhitungan.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                topRanking.map((item) => (
+                  <tr key={`${item.id}-${item.nama}`}>
+                    <td className="py-3 font-semibold text-text-primary">{item.nama}</td>
+                    <td className="py-3 text-text-secondary">{item.id}</td>
+                    <td className="py-3 font-semibold text-text-primary">
+                      {Number(item.vi || 0).toFixed(3)}
+                    </td>
+                    <td className="py-3">
+                      <Badge variant={STATUS_VARIANT[item.status] || "info"}>{item.status}</Badge>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

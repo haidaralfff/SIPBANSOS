@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import PageContainer from "../../components/layout/PageContainer";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
@@ -6,6 +7,9 @@ import Card from "../../components/ui/Card";
 const ForbiddenPage = () => {
   return (
     <PageContainer>
+      <Helmet>
+        <title>Akses Ditolak | SIPBANSOS</title>
+      </Helmet>
       <div className="flex min-h-[70vh] items-center justify-center">
         <Card className="max-w-md p-6 text-center">
           <h1 className="text-2xl font-bold text-text-primary">Akses Ditolak</h1>

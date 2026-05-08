@@ -43,3 +43,56 @@ type Warga struct {
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }
+
+type KriteriaBobot struct {
+	ID         string    `json:"id"`
+	Versi      string    `json:"versi"`
+	Keterangan *string   `json:"keterangan,omitempty"`
+	BobotC1    float64   `json:"bobot_c1"`
+	BobotC2    float64   `json:"bobot_c2"`
+	BobotC3    float64   `json:"bobot_c3"`
+	BobotC4    float64   `json:"bobot_c4"`
+	BobotC5    float64   `json:"bobot_c5"`
+	BobotC6    float64   `json:"bobot_c6"`
+	BobotC7    float64   `json:"bobot_c7"`
+	BobotC8    float64   `json:"bobot_c8"`
+	BobotC9    float64   `json:"bobot_c9"`
+	BobotC10   float64   `json:"bobot_c10"`
+	BobotC11   float64   `json:"bobot_c11"`
+	BobotC12   float64   `json:"bobot_c12"`
+	BobotC13   float64   `json:"bobot_c13"`
+	IsActive   bool      `json:"is_active"`
+	DibuatOleh *string   `json:"dibuat_oleh,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type PeriodeBansos struct {
+	ID             string    `json:"id"`
+	NamaPeriode    string    `json:"nama_periode"`
+	TanggalMulai   time.Time `json:"tanggal_mulai"`
+	TanggalSelesai time.Time `json:"tanggal_selesai"`
+	Kuota          int       `json:"kuota"`
+	BobotID        *string   `json:"bobot_id,omitempty"`
+	Status         string    `json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type HasilSAWReport struct {
+	ID          string  `json:"id"`
+	PeriodeID   string  `json:"periode_id"`
+	WargaID     string  `json:"warga_id"`
+	NamaLengkap string  `json:"nama_lengkap"`
+	NIK         string  `json:"nik"`
+	RT          *string `json:"rt,omitempty"`
+	RW          *string `json:"rw,omitempty"`
+	NilaiVI     float64 `json:"nilai_vi"`
+	Ranking     int     `json:"ranking"`
+	Status      string  `json:"status"`
+}
+
+type HasilSAWSummary struct {
+	Total      int `json:"total"`
+	Penerima   int `json:"penerima"`
+	Cadangan   int `json:"cadangan"`
+	TidakLolos int `json:"tidak_lolos"`
+}

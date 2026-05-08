@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import PageContainer from "../../components/layout/PageContainer";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -45,6 +46,9 @@ const LoginPage = () => {
 
   return (
     <PageContainer>
+      <Helmet>
+        <title>Masuk | SIPBANSOS</title>
+      </Helmet>
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <Card className="w-full max-w-md p-6">
           <Badge variant="warning">SIPBANSOS</Badge>

@@ -3,6 +3,8 @@ import { ROLE_LABELS } from "../utils/roleGuard";
 
 const STORAGE_KEY = "sipbansos_auth";
 
+const getApiBaseUrl = () => (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
 const readStoredUser = () => {
   if (typeof localStorage === "undefined") return null;
   try {
@@ -35,7 +37,7 @@ export const AuthProvider = ({ children }) => {
       return { success: false, message: "Email/username dan password wajib diisi." };
     }
 
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || "";
+    const baseUrl = getApiBaseUrl();
 
     try {
       const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
@@ -85,6 +87,40 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshSession = async () => {
+    if (!user?.refreshToken) return false;
+    const baseUrl = getApiBaseUrl();
+
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          refresh_token: user.refreshToken
+        })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return false;
+      }
+
+      const nextUser = {
+        ...user,
+        accessToken: payload?.access_token,
+        refreshToken: payload?.refresh_token || user.refreshToken
+      };
+
+      setUser(nextUser);
+      writeStoredUser(nextUser);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     writeStoredUser(null);
@@ -95,7 +131,8 @@ export const AuthProvider = ({ children }) => {
       user,
       isAuthenticated,
       login,
-      logout
+      logout,
+      refreshSession
     }),
     [user, isAuthenticated]
   );

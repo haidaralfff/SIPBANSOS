@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,18 +19,22 @@ import (
 )
 
 type Handler struct {
-	db    *pgxpool.Pool
-	auth  *auth.Manager
-	users *repository.UserRepository
-	warga *repository.WargaRepository
+	db       *pgxpool.Pool
+	auth     *auth.Manager
+	users    *repository.UserRepository
+	warga    *repository.WargaRepository
+	kriteria *repository.KriteriaRepository
+	reports  *repository.ReportRepository
 }
 
 func NewHandler(db *pgxpool.Pool, authManager *auth.Manager) *Handler {
 	return &Handler{
-		db:    db,
-		auth:  authManager,
-		users: repository.NewUserRepository(db),
-		warga: repository.NewWargaRepository(db),
+		db:       db,
+		auth:     authManager,
+		users:    repository.NewUserRepository(db),
+		warga:    repository.NewWargaRepository(db),
+		kriteria: repository.NewKriteriaRepository(db),
+		reports:  repository.NewReportRepository(db),
 	}
 }
 
@@ -67,6 +72,10 @@ type wargaRequest struct {
 	TingkatPendidikan  int    `json:"tingkat_pendidikan" binding:"required"`
 	StatusPekerjaan    int    `json:"status_pekerjaan" binding:"required"`
 	KondisiKesehatan   int    `json:"kondisi_kesehatan" binding:"required"`
+}
+
+type sawRunRequest struct {
+	Kuota int `json:"kuota"`
 }
 
 // Auth handlers
@@ -279,14 +288,25 @@ func (h *Handler) DeleteWarga(c *gin.Context) {
 
 // SAW execution endpoint
 func (h *Handler) RunSAW(c *gin.Context) {
+	var req sawRunRequest
+	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	kuota := req.Kuota
+	if kuota <= 0 {
+		kuota = 1
+	}
+
 	// For demo, create dummy alternatif and run SAW
 	alternatif := []saw.Alternatif{
 		{ID: 1, Nama: "Ali", Nilai: [13]float64{5, 4, 3, 3, 4, 2, 2, 3, 3, 1, 4, 5, 2}},
 		{ID: 2, Nama: "Budi", Nilai: [13]float64{3, 3, 4, 4, 3, 3, 3, 2, 2, 2, 3, 3, 3}},
 	}
 	bobot := [13]float64{0.15, 0.10, 0.08, 0.08, 0.05, 0.07, 0.08, 0.08, 0.07, 0.07, 0.07, 0.08, 0.02}
-	hasil := saw.HitungSAW(alternatif, bobot, 1)
-	c.JSON(http.StatusOK, gin.H{"hasil": hasil})
+	hasil := saw.HitungSAW(alternatif, bobot, kuota)
+	c.JSON(http.StatusOK, gin.H{"hasil": hasil, "kuota": kuota})
 }
 
 func parseIntQuery(c *gin.Context, key string, fallback int) int {

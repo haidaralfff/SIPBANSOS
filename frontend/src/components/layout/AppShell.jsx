@@ -2,6 +2,7 @@ import Header from "./Header";
 import PageContainer from "./PageContainer";
 import RightPanel from "./RightPanel";
 import Sidebar from "./Sidebar";
+import { Helmet } from "react-helmet-async";
 import { useAuth } from "../../context/AuthContext";
 import { ROLE_LABELS } from "../../utils/roleGuard";
 
@@ -21,8 +22,13 @@ const AppShell = ({ title, subtitle, children, showRightPanel = true }) => {
     ? "grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_300px]"
     : "grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]";
 
+  const pageTitle = title ? `${title} | SIPBANSOS` : "SIPBANSOS";
+
   return (
     <PageContainer>
+      <Helmet>
+        <title>{pageTitle}</title>
+      </Helmet>
       <div className={gridClassName}>
         <Sidebar />
         <main className="min-w-0 space-y-6">

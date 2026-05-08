@@ -4,6 +4,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import ProgressBar from "../../components/ui/ProgressBar";
+import { useApi } from "../../hooks/useApi";
 
 const IMPORT_LOG = [
   { file: "import_warga_april.xlsx", status: "Berhasil", time: "Hari ini" },
@@ -27,9 +28,12 @@ const SUMMARY = {
 };
 
 const ImportEksporPage = () => {
+  const { downloadImportTemplate } = useApi();
   const [activeTab, setActiveTab] = useState("import");
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
   const fileInputRef = useRef(null);
 
   const handleFiles = (files) => {
@@ -45,6 +49,16 @@ const ImportEksporPage = () => {
 
   const handleBrowse = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleDownloadTemplate = async (format) => {
+    setDownloadError("");
+    setIsDownloading(true);
+    const result = await downloadImportTemplate(format);
+    setIsDownloading(false);
+    if (!result.success) {
+      setDownloadError(result.message || "Gagal mengunduh template.");
+    }
   };
 
   const statusVariant = (status) => {
@@ -112,12 +126,20 @@ const ImportEksporPage = () => {
                 <p className="mt-2 text-xs text-text-secondary">Ukuran maks 5MB, format .xlsx atau .csv</p>
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                   <Button onClick={handleBrowse}>Upload File</Button>
-                  <Button variant="outline">Unduh Template</Button>
+                  <Button variant="outline" onClick={() => handleDownloadTemplate("xlsx")} disabled={isDownloading}>
+                    {isDownloading ? "Mengunduh..." : "Unduh Template"}
+                  </Button>
                 </div>
                 {selectedFile ? (
                   <p className="mt-3 text-xs text-text-secondary">File dipilih: {selectedFile.name}</p>
                 ) : null}
               </div>
+
+              {downloadError ? (
+                <div className="mt-4 rounded-card bg-accent-red/10 px-3 py-2 text-xs text-accent-red">
+                  {downloadError}
+                </div>
+              ) : null}
 
               <div className="mt-4 rounded-card bg-background/70 p-4">
                 <div className="flex items-center justify-between">
@@ -211,8 +233,20 @@ const ImportEksporPage = () => {
                 <h3 className="text-sm font-bold">Template & Panduan</h3>
                 <p className="text-xs text-text-secondary">Pastikan format sesuai sebelum upload.</p>
                 <div className="mt-4 flex flex-col gap-2">
-                  <Button variant="outline">Unduh Template Excel</Button>
-                  <Button variant="outline">Unduh Template CSV</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownloadTemplate("xlsx")}
+                    disabled={isDownloading}
+                  >
+                    Unduh Template Excel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownloadTemplate("csv")}
+                    disabled={isDownloading}
+                  >
+                    Unduh Template CSV
+                  </Button>
                   <Button variant="outline">Lihat Panduan Import</Button>
                 </div>
               </>

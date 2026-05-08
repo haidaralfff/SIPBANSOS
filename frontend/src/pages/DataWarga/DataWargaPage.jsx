@@ -1,199 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppShell from "../../components/layout/AppShell";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Drawer from "../../components/ui/Drawer";
-import { formatRupiah } from "../../utils/formatter";
+import { useApi } from "../../hooks/useApi";
+import { formatNumber, formatRupiah } from "../../utils/formatter";
 
-const STATS = [
-  {
-    label: "Warga Aktif",
-    value: "1.128",
-    helper: "+24 minggu ini",
-    variant: "success",
-    note: "Data aktif siap dihitung."
-  },
-  {
-    label: "Menunggu Verifikasi",
-    value: "68",
-    helper: "RW 01-07",
-    variant: "info",
-    note: "Dokumen perlu validasi."
-  },
-  {
-    label: "Dokumen Kurang",
-    value: "19",
-    helper: "Perlu tindak lanjut",
-    variant: "warning",
-    note: "KTP/KK belum lengkap."
-  }
-];
-
-const WARGA = [
-  {
-    id: 1,
-    name: "Siti Aminah",
-    nik: "3275030102000016",
-    noKk: "3275030102000099",
-    rtRw: "02/04",
-    address: "Kp. Mekar Jaya Blok A No. 12",
-    gender: "Perempuan",
-    birthDate: "12 Feb 1984",
-    phone: "0812-8899-1122",
-    penghasilan: 500000,
-    tanggungan: 5,
-    pekerjaan: "Tidak Bekerja",
-    pendidikan: "SD",
-    kesehatan: "Sakit Kronis",
-    status: "Penerima",
-    verification: "Terverifikasi",
-    updated: "2 jam lalu",
-    documents: {
-      ktp: "Lengkap",
-      kk: "Lengkap"
-    },
-    criteria: [
-      { label: "Penghasilan per Bulan", value: "Rp 500.000 (Skor 5)" },
-      { label: "Jumlah Tanggungan", value: "5 orang" },
-      { label: "Kondisi Tempat Tinggal", value: "Sewa Kamar (Skor 4)" },
-      { label: "Status Kepemilikan Rumah", value: "Tidak Punya (Skor 5)" },
-      { label: "Akses Air Bersih", value: "Tidak Ada (Skor 5)" },
-      { label: "Pengeluaran Listrik", value: "Rp 150.000" },
-      { label: "Pengeluaran Pangan", value: "Rp 30.000 / hari" },
-      { label: "Biaya Pendidikan", value: "Rp 200.000" },
-      { label: "Biaya Kesehatan", value: "Rp 50.000" },
-      { label: "Cicilan / Hutang", value: "Rp 300.000" },
-      { label: "Tingkat Pendidikan KK", value: "SD (Skor 4)" },
-      { label: "Status Pekerjaan KK", value: "Tidak Bekerja (Skor 5)" },
-      { label: "Kondisi Kesehatan", value: "Sakit Kronis (Skor 5)" }
-    ]
-  },
-  {
-    id: 2,
-    name: "Budi Santoso",
-    nik: "3275030102000024",
-    noKk: "3275030102000088",
-    rtRw: "01/03",
-    address: "Kp. Mekar Jaya Blok C No. 7",
-    gender: "Laki-laki",
-    birthDate: "02 Mei 1979",
-    phone: "0813-2244-8899",
-    penghasilan: 900000,
-    tanggungan: 3,
-    pekerjaan: "Buruh Harian",
-    pendidikan: "SMP",
-    kesehatan: "Rentan",
-    status: "Cadangan",
-    verification: "Menunggu",
-    updated: "Hari ini",
-    documents: {
-      ktp: "Lengkap",
-      kk: "Kurang"
-    },
-    criteria: [
-      { label: "Penghasilan per Bulan", value: "Rp 900.000 (Skor 4)" },
-      { label: "Jumlah Tanggungan", value: "3 orang" },
-      { label: "Kondisi Tempat Tinggal", value: "Kontrak (Skor 3)" },
-      { label: "Status Kepemilikan Rumah", value: "Menumpang (Skor 4)" },
-      { label: "Akses Air Bersih", value: "Terbatas (Skor 3)" },
-      { label: "Pengeluaran Listrik", value: "Rp 220.000" },
-      { label: "Pengeluaran Pangan", value: "Rp 45.000 / hari" },
-      { label: "Biaya Pendidikan", value: "Rp 150.000" },
-      { label: "Biaya Kesehatan", value: "Rp 120.000" },
-      { label: "Cicilan / Hutang", value: "Rp 150.000" },
-      { label: "Tingkat Pendidikan KK", value: "SMP (Skor 3)" },
-      { label: "Status Pekerjaan KK", value: "Buruh Harian (Skor 3)" },
-      { label: "Kondisi Kesehatan", value: "Rentan (Skor 4)" }
-    ]
-  },
-  {
-    id: 3,
-    name: "Rina Kartika",
-    nik: "3275030102000032",
-    noKk: "3275030102000077",
-    rtRw: "05/07",
-    address: "Kp. Mekar Jaya Blok D No. 18",
-    gender: "Perempuan",
-    birthDate: "20 Agu 1990",
-    phone: "0821-1188-4422",
-    penghasilan: 1600000,
-    tanggungan: 2,
-    pekerjaan: "Wiraswasta",
-    pendidikan: "SMA",
-    kesehatan: "Sehat",
-    status: "Tidak Lolos",
-    verification: "Terverifikasi",
-    updated: "Kemarin",
-    documents: {
-      ktp: "Lengkap",
-      kk: "Lengkap"
-    },
-    criteria: [
-      { label: "Penghasilan per Bulan", value: "Rp 1.600.000 (Skor 2)" },
-      { label: "Jumlah Tanggungan", value: "2 orang" },
-      { label: "Kondisi Tempat Tinggal", value: "Milik Pribadi (Skor 2)" },
-      { label: "Status Kepemilikan Rumah", value: "Milik Sendiri (Skor 2)" },
-      { label: "Akses Air Bersih", value: "Ada (Skor 2)" },
-      { label: "Pengeluaran Listrik", value: "Rp 300.000" },
-      { label: "Pengeluaran Pangan", value: "Rp 70.000 / hari" },
-      { label: "Biaya Pendidikan", value: "Rp 250.000" },
-      { label: "Biaya Kesehatan", value: "Rp 80.000" },
-      { label: "Cicilan / Hutang", value: "Rp 100.000" },
-      { label: "Tingkat Pendidikan KK", value: "SMA (Skor 2)" },
-      { label: "Status Pekerjaan KK", value: "Wiraswasta (Skor 2)" },
-      { label: "Kondisi Kesehatan", value: "Sehat (Skor 2)" }
-    ]
-  },
-  {
-    id: 4,
-    name: "Tono Prasetyo",
-    nik: "3275030102000040",
-    noKk: "3275030102000066",
-    rtRw: "03/02",
-    address: "Kp. Mekar Jaya Blok B No. 2",
-    gender: "Laki-laki",
-    birthDate: "05 Mar 1987",
-    phone: "0817-6600-1112",
-    penghasilan: 700000,
-    tanggungan: 4,
-    pekerjaan: "Pekerja Tidak Tetap",
-    pendidikan: "SD",
-    kesehatan: "Rentan",
-    status: "Penerima",
-    verification: "Perlu Revisi",
-    updated: "3 hari lalu",
-    documents: {
-      ktp: "Kurang",
-      kk: "Lengkap"
-    },
-    criteria: [
-      { label: "Penghasilan per Bulan", value: "Rp 700.000 (Skor 4)" },
-      { label: "Jumlah Tanggungan", value: "4 orang" },
-      { label: "Kondisi Tempat Tinggal", value: "Menumpang (Skor 4)" },
-      { label: "Status Kepemilikan Rumah", value: "Menumpang (Skor 4)" },
-      { label: "Akses Air Bersih", value: "Terbatas (Skor 3)" },
-      { label: "Pengeluaran Listrik", value: "Rp 180.000" },
-      { label: "Pengeluaran Pangan", value: "Rp 35.000 / hari" },
-      { label: "Biaya Pendidikan", value: "Rp 120.000" },
-      { label: "Biaya Kesehatan", value: "Rp 60.000" },
-      { label: "Cicilan / Hutang", value: "Rp 180.000" },
-      { label: "Tingkat Pendidikan KK", value: "SD (Skor 4)" },
-      { label: "Status Pekerjaan KK", value: "Pekerja Tidak Tetap (Skor 4)" },
-      { label: "Kondisi Kesehatan", value: "Rentan (Skor 4)" }
-    ]
-  }
-];
-
-const RT_RW_OPTIONS = ["Semua", "01/03", "02/04", "03/02", "05/07"];
-const STATUS_OPTIONS = ["Semua", "Penerima", "Cadangan", "Tidak Lolos"];
+const PAGE_SIZE = 10;
+const STATUS_OPTIONS = ["Semua", "Aktif", "Nonaktif"];
 const VERIFICATION_OPTIONS = ["Semua", "Terverifikasi", "Menunggu", "Perlu Revisi"];
 
-const statusVariant = (status) => {
-  if (status === "Penerima") return "penerima";
-  if (status === "Cadangan") return "cadangan";
-  return "tidak-lolos";
-};
+const statusVariant = (status) => (status === "Aktif" ? "success" : "danger");
 
 const verificationVariant = (status) => {
   if (status === "Terverifikasi") return "success";
@@ -206,28 +24,181 @@ const compactId = (value) => {
   return value.length <= 12 ? value : `${value.slice(0, 6)}...${value.slice(-4)}`;
 };
 
+const formatDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(date);
+};
+
+const buildCriteria = (item) => [
+  { label: "Penghasilan per Bulan", value: formatRupiah(item.penghasilan) },
+  { label: "Jumlah Tanggungan", value: `${item.jumlah_tanggungan} orang` },
+  { label: "Kondisi Tempat Tinggal", value: `Skor ${item.kondisi_tempat}` },
+  { label: "Status Kepemilikan Rumah", value: `Skor ${item.status_kepemilikan}` },
+  { label: "Akses Air Bersih", value: `Skor ${item.akses_air}` },
+  { label: "Pengeluaran Listrik", value: formatRupiah(item.pengeluaran_listrik) },
+  { label: "Pengeluaran Pangan", value: formatRupiah(item.pengeluaran_pangan) },
+  { label: "Biaya Pendidikan", value: formatRupiah(item.biaya_pendidikan) },
+  { label: "Biaya Kesehatan", value: formatRupiah(item.biaya_kesehatan) },
+  { label: "Cicilan / Hutang", value: formatRupiah(item.cicilan_hutang) },
+  { label: "Tingkat Pendidikan KK", value: `Skor ${item.tingkat_pendidikan}` },
+  { label: "Status Pekerjaan KK", value: `Skor ${item.status_pekerjaan}` },
+  { label: "Kondisi Kesehatan", value: `Skor ${item.kondisi_kesehatan}` }
+];
+
+const resolveVerification = (item) => {
+  if (item.foto_ktp_url && item.foto_kk_url) return "Terverifikasi";
+  if (item.foto_ktp_url || item.foto_kk_url) return "Perlu Revisi";
+  return "Menunggu";
+};
+
+const parseRtRwFilter = (value) => {
+  if (!value || value === "Semua") return { rt: "", rw: "" };
+  const [rt, rw] = value.split("/");
+  return { rt: rt?.trim() || "", rw: rw?.trim() || "" };
+};
+
+const mapWargaResponse = (item) => {
+  const rt = item.rt ?? "";
+  const rw = item.rw ?? "";
+  const rtRw = rt && rw ? `${rt}/${rw}` : rt || rw || "-";
+  const documents = {
+    ktp: item.foto_ktp_url ? "Lengkap" : "Kurang",
+    kk: item.foto_kk_url ? "Lengkap" : "Kurang"
+  };
+  const verification = resolveVerification(item);
+
+  return {
+    id: item.id,
+    name: item.nama_lengkap,
+    nik: item.nik,
+    noKk: item.no_kk,
+    rtRw,
+    address: item.alamat,
+    gender: item.jenis_kelamin === "L" ? "Laki-laki" : "Perempuan",
+    birthDate: formatDate(item.tanggal_lahir),
+    phone: item.no_hp || "-",
+    penghasilan: item.penghasilan,
+    tanggungan: item.jumlah_tanggungan,
+    status: item.is_active ? "Aktif" : "Nonaktif",
+    verification,
+    updated: formatDate(item.updated_at),
+    documents,
+    criteria: buildCriteria(item)
+  };
+};
+
 const DataWargaPage = () => {
+  const { getWarga } = useApi();
   const [query, setQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Semua");
   const [selectedRtRw, setSelectedRtRw] = useState("Semua");
   const [selectedVerification, setSelectedVerification] = useState("Semua");
   const [selectedWarga, setSelectedWarga] = useState(null);
+  const [warga, setWarga] = useState([]);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const rtRwOptions = useMemo(() => {
+    const unique = new Set(
+      warga
+        .map((item) => item.rtRw)
+        .filter((value) => value && value !== "-")
+    );
+    return ["Semua", ...Array.from(unique).sort()];
+  }, [warga]);
+
+  useEffect(() => {
+    if (!rtRwOptions.includes(selectedRtRw)) {
+      setSelectedRtRw("Semua");
+    }
+  }, [rtRwOptions, selectedRtRw]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, selectedRtRw]);
+
+  useEffect(() => {
+    let isActive = true;
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError("");
+      const { rt, rw } = parseRtRwFilter(selectedRtRw);
+      const result = await getWarga({
+        page,
+        limit: PAGE_SIZE,
+        q: query.trim(),
+        rt,
+        rw
+      });
+
+      if (!isActive) return;
+
+      if (!result.success) {
+        setError(result.message || "Gagal memuat data warga.");
+        setWarga([]);
+        setIsLoading(false);
+        return;
+      }
+
+      setWarga(result.data.map(mapWargaResponse));
+      setIsLoading(false);
+    };
+
+    fetchData();
+    return () => {
+      isActive = false;
+    };
+  }, [getWarga, page, query, selectedRtRw]);
 
   const filteredWarga = useMemo(() => {
-    const loweredQuery = query.trim().toLowerCase();
-    return WARGA.filter((item) => {
-      const matchesQuery =
-        !loweredQuery ||
-        item.name.toLowerCase().includes(loweredQuery) ||
-        item.nik.includes(loweredQuery) ||
-        item.noKk.includes(loweredQuery);
+    return warga.filter((item) => {
       const matchesStatus = selectedStatus === "Semua" || item.status === selectedStatus;
-      const matchesRtRw = selectedRtRw === "Semua" || item.rtRw === selectedRtRw;
       const matchesVerification =
         selectedVerification === "Semua" || item.verification === selectedVerification;
-      return matchesQuery && matchesStatus && matchesRtRw && matchesVerification;
+      return matchesStatus && matchesVerification;
     });
-  }, [query, selectedStatus, selectedRtRw, selectedVerification]);
+  }, [warga, selectedStatus, selectedVerification]);
+
+  const stats = useMemo(() => {
+    const activeCount = warga.filter((item) => item.status === "Aktif").length;
+    const pendingCount = warga.filter((item) => item.verification === "Menunggu").length;
+    const missingDocs = warga.filter(
+      (item) => item.documents.ktp !== "Lengkap" || item.documents.kk !== "Lengkap"
+    ).length;
+
+    return [
+      {
+        label: "Warga Aktif",
+        value: formatNumber(activeCount),
+        helper: "Daftar saat ini",
+        variant: "success",
+        note: "Data aktif siap dihitung."
+      },
+      {
+        label: "Menunggu Verifikasi",
+        value: formatNumber(pendingCount),
+        helper: "Perlu tindak lanjut",
+        variant: "info",
+        note: "Dokumen belum lengkap."
+      },
+      {
+        label: "Dokumen Kurang",
+        value: formatNumber(missingDocs),
+        helper: "Butuh revisi",
+        variant: "warning",
+        note: "KTP atau KK belum sesuai."
+      }
+    ];
+  }, [warga]);
+
+  const hasNextPage = warga.length === PAGE_SIZE;
 
   const closeDrawer = () => setSelectedWarga(null);
 
@@ -238,7 +209,7 @@ const DataWargaPage = () => {
       showRightPanel={false}
     >
       <div className="grid gap-4 lg:grid-cols-3">
-        {STATS.map((item) => (
+        {stats.map((item) => (
           <Card key={item.label} className="p-4">
             <div className="flex items-start justify-between">
               <div>
@@ -278,7 +249,7 @@ const DataWargaPage = () => {
                 value={selectedRtRw}
                 onChange={(event) => setSelectedRtRw(event.target.value)}
               >
-                {RT_RW_OPTIONS.map((option) => (
+                {rtRwOptions.map((option) => (
                   <option key={option} value={option}>
                     {option === "Semua" ? "Semua RT/RW" : `RT/RW ${option}`}
                   </option>
@@ -316,6 +287,12 @@ const DataWargaPage = () => {
           </div>
         </div>
 
+        {error ? (
+          <div className="mt-4 rounded-card bg-accent-red/10 px-3 py-2 text-xs text-accent-red">
+            {error}
+          </div>
+        ) : null}
+
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs text-text-secondary">
@@ -333,41 +310,69 @@ const DataWargaPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {filteredWarga.map((item) => (
-                <tr key={item.nik} className="hover:bg-background/60">
-                  <td className="py-3 font-semibold text-text-primary">{item.name}</td>
-                  <td className="py-3 text-text-secondary font-mono tabular-nums" title={item.nik}>
-                    {compactId(item.nik)}
-                  </td>
-                  <td className="py-3 text-text-secondary font-mono tabular-nums" title={item.noKk}>
-                    {compactId(item.noKk)}
-                  </td>
-                  <td className="py-3 text-text-secondary">{item.rtRw}</td>
-                  <td className="py-3 text-text-secondary">{formatRupiah(item.penghasilan)}</td>
-                  <td className="py-3 text-text-secondary">{item.tanggungan} orang</td>
-                  <td className="py-3">
-                    <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
-                  </td>
-                  <td className="py-3">
-                    <Badge variant={verificationVariant(item.verification)}>{item.verification}</Badge>
-                  </td>
-                  <td className="py-3 text-text-secondary">{item.updated}</td>
-                  <td className="py-3">
-                    <Button variant="outline" onClick={() => setSelectedWarga(item)}>
-                      Detail
-                    </Button>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={10} className="py-6 text-center text-sm text-text-secondary">
+                    Memuat data warga...
                   </td>
                 </tr>
-              ))}
+              ) : filteredWarga.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="py-6 text-center text-sm text-text-secondary">
+                    Belum ada data warga yang cocok.
+                  </td>
+                </tr>
+              ) : (
+                filteredWarga.map((item) => (
+                  <tr key={item.nik} className="hover:bg-background/60">
+                    <td className="py-3 font-semibold text-text-primary">{item.name}</td>
+                    <td className="py-3 text-text-secondary font-mono tabular-nums" title={item.nik}>
+                      {compactId(item.nik)}
+                    </td>
+                    <td className="py-3 text-text-secondary font-mono tabular-nums" title={item.noKk}>
+                      {compactId(item.noKk)}
+                    </td>
+                    <td className="py-3 text-text-secondary">{item.rtRw}</td>
+                    <td className="py-3 text-text-secondary">{formatRupiah(item.penghasilan)}</td>
+                    <td className="py-3 text-text-secondary">{item.tanggungan} orang</td>
+                    <td className="py-3">
+                      <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+                    </td>
+                    <td className="py-3">
+                      <Badge variant={verificationVariant(item.verification)}>{item.verification}</Badge>
+                    </td>
+                    <td className="py-3 text-text-secondary">{item.updated}</td>
+                    <td className="py-3">
+                      <Button variant="outline" onClick={() => setSelectedWarga(item)}>
+                        Detail
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between text-xs text-text-secondary">
-          <span>Menampilkan {filteredWarga.length} dari 1.128 data</span>
+          <span>
+            Menampilkan {filteredWarga.length} dari {formatNumber(warga.length)} data pada halaman ini
+          </span>
           <div className="flex items-center gap-2">
-            <Button variant="ghost">Sebelumnya</Button>
-            <Button variant="ghost">Berikutnya</Button>
+            <Button
+              variant="ghost"
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+              disabled={page === 1}
+            >
+              Sebelumnya
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setPage((prev) => prev + 1)}
+              disabled={!hasNextPage}
+            >
+              Berikutnya
+            </Button>
           </div>
         </div>
       </Card>
