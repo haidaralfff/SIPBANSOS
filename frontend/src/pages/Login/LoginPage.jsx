@@ -19,6 +19,7 @@ const LoginPage = () => {
   });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -90,7 +91,7 @@ const LoginPage = () => {
           </form>
         </Card>
       </div>
-    </PageContainer>
+    </div>
   );
 };
 

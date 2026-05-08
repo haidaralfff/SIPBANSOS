@@ -279,4 +279,8 @@ Untuk pertanyaan atau masalah, silakan buat issue di repository ini.
 
 ---
 
-**Dibuat dengan ❤️ untuk transparansi distribusi bantuan sosial**
+## 👥 Tim Pengembang
+
+* **Frontend Developer** — Haidar Habibi Al Farisi
+* **Backend Developer** — Wahyu Tri Cahya
+
