@@ -121,6 +121,70 @@ export const useApi = () => {
     [request]
   );
 
+  const validateImport = useCallback(
+    async (file) => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await request("/api/v1/import/validate", {
+        method: "POST",
+        body: formData,
+        headers: { "Accept": "application/json" }
+      });
+
+      const payload = await parseJson(response);
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal memvalidasi file." };
+      }
+      return { success: true, summary: payload?.summary, preview: payload?.preview };
+    },
+    [request]
+  );
+
+  const confirmImport = useCallback(
+    async (data) => {
+      const response = await request("/api/v1/import/confirm", {
+        method: "POST",
+        body: JSON.stringify({ data })
+      });
+
+      const payload = await parseJson(response);
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal mengimpor data." };
+      }
+      return { success: true, message: payload?.message, imported: payload?.imported };
+    },
+    [request]
+  );
+
+  const exportData = useCallback(
+    async (format = "csv", periodId = "") => {
+      let url = `/api/v1/export/data?format=${format}`;
+      if (periodId) {
+        url += `&periode_id=${encodeURIComponent(periodId)}`;
+      }
+
+      const response = await request(url, {
+        method: "GET"
+      });
+
+      if (!response.ok) {
+        const payload = await parseJson(response);
+        return {
+          success: false,
+          message: payload?.error || "Gagal mengunduh data ekspor."
+        };
+      }
+
+      const blob = await response.blob();
+      const fileName =
+        extractFilename(response.headers.get("Content-Disposition")) || `ekspor_warga.${format}`;
+      triggerDownload(blob, fileName);
+      return { success: true };
+    },
+    [request]
+  );
+
   const runSAW = useCallback(
     async ({ kuota = 1 } = {}) => {
       const response = await request("/api/v1/saw/run", {
@@ -278,6 +342,9 @@ export const useApi = () => {
     updateKriteria,
     getPeriods,
     getRanking,
-    getSummary
+    getSummary,
+    validateImport,
+    confirmImport,
+    exportData
   };
 };

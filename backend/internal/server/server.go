@@ -31,6 +31,13 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 			importGroup := protected.Group("/import", middleware.RequireRoles("admin", "petugas"))
 			{
 				importGroup.GET("/template", h.DownloadImportTemplate)
+				importGroup.POST("/validate", h.ValidateImport)
+				importGroup.POST("/confirm", h.ConfirmImport)
+			}
+
+			exportGroup := protected.Group("/export", middleware.RequireRoles("admin", "petugas", "kepala_desa"))
+			{
+				exportGroup.GET("/data", h.ExportData)
 			}
 
 			wargaRead := protected.Group("/warga")
