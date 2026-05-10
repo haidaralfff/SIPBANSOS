@@ -16,7 +16,7 @@ const PREVIEW_ROWS = [
   { row: 2, nik: "3275030102000016", name: "Siti Aminah", status: "Valid", detail: "-" },
   { row: 3, nik: "3275030102000024", name: "Budi Santoso", status: "Duplikat", detail: "NIK sudah terdaftar" },
   { row: 4, nik: "3275030102000032", name: "Rina Kartika", status: "Valid", detail: "-" },
-  { row: 5, nik: "3275030102000040", name: "Tono Prasetyo", status: "Error", detail: "Format penghasilan tidak valid" },
+  { row: 5, nik: "3275030102000040", name: "Tono Prasetyo", status: "Error", detail: "Format nilai tidak valid" },
   { row: 6, nik: "3275030102000058", name: "Sari Lestari", status: "Valid", detail: "-" }
 ];
 
