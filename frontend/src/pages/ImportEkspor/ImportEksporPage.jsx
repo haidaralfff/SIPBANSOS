@@ -12,23 +12,8 @@ const IMPORT_LOG = [
   { file: "data_lama_q1.xlsx", status: "Gagal", time: "20 Apr 2026" }
 ];
 
-const PREVIEW_ROWS = [
-  { row: 2, nik: "3275030102000016", name: "Siti Aminah", status: "Valid", detail: "-" },
-  { row: 3, nik: "3275030102000024", name: "Budi Santoso", status: "Duplikat", detail: "NIK sudah terdaftar" },
-  { row: 4, nik: "3275030102000032", name: "Rina Kartika", status: "Valid", detail: "-" },
-  { row: 5, nik: "3275030102000040", name: "Tono Prasetyo", status: "Error", detail: "Format nilai tidak valid" },
-  { row: 6, nik: "3275030102000058", name: "Sari Lestari", status: "Valid", detail: "-" }
-];
-
-const SUMMARY = {
-  total: 320,
-  valid: 284,
-  duplicate: 12,
-  error: 24
-};
-
 const ImportEksporPage = () => {
-  const { downloadImportTemplate, getPeriods } = useApi();
+  const { downloadImportTemplate, getPeriods, validateImport, confirmImport, exportData } = useApi();
   const [activeTab, setActiveTab] = useState("import");
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -37,6 +22,14 @@ const ImportEksporPage = () => {
   const fileInputRef = useRef(null);
   const [periods, setPeriods] = useState([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState("");
+  const [exportFormat, setExportFormat] = useState("csv");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const [previewRows, setPreviewRows] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [importMessage, setImportMessage] = useState("");
 
   useEffect(() => {
     const fetchPeriods = async () => {
@@ -49,9 +42,62 @@ const ImportEksporPage = () => {
     fetchPeriods();
   }, [getPeriods]);
 
-  const handleFiles = (files) => {
+  const handleFiles = async (files) => {
     if (!files || files.length === 0) return;
-    setSelectedFile(files[0]);
+    const file = files[0];
+    setSelectedFile(file);
+    setDownloadError("");
+    setImportMessage("");
+    setIsValidating(true);
+    setPreviewRows([]);
+    setSummary(null);
+
+    const res = await validateImport(file);
+    setIsValidating(false);
+    if (!res.success) {
+      setDownloadError(res.message);
+    } else {
+      setPreviewRows(res.preview || []);
+      setSummary(res.summary);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!previewRows.length) return;
+    setIsConfirming(true);
+    setImportMessage("");
+    setDownloadError("");
+
+    const dataToImport = previewRows
+      .filter((r) => r.status === "Valid")
+      .map((r) => r.data);
+
+    if (dataToImport.length === 0) {
+      setDownloadError("Tidak ada data valid untuk diimpor.");
+      setIsConfirming(false);
+      return;
+    }
+
+    const res = await confirmImport(dataToImport);
+    setIsConfirming(false);
+    if (!res.success) {
+      setDownloadError(res.message);
+    } else {
+      setImportMessage(res.message);
+      setPreviewRows([]);
+      setSummary(null);
+      setSelectedFile(null);
+    }
+  };
+
+  const handleExport = async () => {
+    setDownloadError("");
+    setIsExporting(true);
+    const result = await exportData(exportFormat, selectedPeriodId);
+    setIsExporting(false);
+    if (!result.success) {
+      setDownloadError(result.message || "Gagal melakukan ekspor.");
+    }
   };
 
   const handleDrop = (event) => {
@@ -154,56 +200,80 @@ const ImportEksporPage = () => {
                 </div>
               ) : null}
 
-              <div className="mt-4 rounded-card bg-background/70 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-text-primary">Validasi Berjalan</p>
-                  <Badge variant="info">82% selesai</Badge>
+              {importMessage ? (
+                <div className="mt-4 rounded-card bg-success/10 px-3 py-2 text-xs text-success">
+                  {importMessage}
                 </div>
-                <ProgressBar value={82} className="mt-3" />
-                <div className="mt-3 grid gap-2 text-xs text-text-secondary lg:grid-cols-4">
-                  <span>{SUMMARY.total} baris diproses</span>
-                  <span>{SUMMARY.valid} valid</span>
-                  <span>{SUMMARY.duplicate} duplikat</span>
-                  <span>{SUMMARY.error} error format</span>
-                </div>
-              </div>
+              ) : null}
 
-              <div className="mt-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold">Preview Validasi</h4>
-                  <Button variant="outline">Unduh Laporan Error</Button>
+              {isValidating && (
+                <div className="mt-4 rounded-card bg-background/70 p-4 text-center text-sm text-text-secondary">
+                  Sedang memvalidasi file...
                 </div>
-                <div className="mt-3 overflow-x-auto rounded-card border border-border/60">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-background/70 text-xs text-text-secondary">
-                      <tr>
-                        <th className="px-3 py-2 font-semibold">Baris</th>
-                        <th className="px-3 py-2 font-semibold">NIK</th>
-                        <th className="px-3 py-2 font-semibold">Nama</th>
-                        <th className="px-3 py-2 font-semibold">Status</th>
-                        <th className="px-3 py-2 font-semibold">Catatan</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {PREVIEW_ROWS.map((row) => (
-                        <tr key={`${row.row}-${row.nik}`}>
-                          <td className="px-3 py-3 text-text-secondary">{row.row}</td>
-                          <td className="px-3 py-3 text-text-secondary">{row.nik}</td>
-                          <td className="px-3 py-3 text-text-secondary">{row.name}</td>
-                          <td className="px-3 py-3">
-                            <Badge variant={statusVariant(row.status)}>{row.status}</Badge>
-                          </td>
-                          <td className="px-3 py-3 text-text-secondary">{row.detail}</td>
+              )}
+
+              {summary && !isValidating && (
+                <div className="mt-4 rounded-card bg-background/70 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-text-primary">Hasil Validasi</p>
+                    <Badge variant={summary.error === 0 ? "success" : "warning"}>
+                      {summary.valid} Valid
+                    </Badge>
+                  </div>
+                  <ProgressBar value={summary.total > 0 ? (summary.valid / summary.total) * 100 : 0} className="mt-3" />
+                  <div className="mt-3 grid gap-2 text-xs text-text-secondary lg:grid-cols-4">
+                    <span>{summary.total} baris diproses</span>
+                    <span>{summary.valid} valid</span>
+                    <span>{summary.duplicate} duplikat</span>
+                    <span>{summary.error} error format</span>
+                  </div>
+                </div>
+              )}
+
+              {previewRows.length > 0 && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold">Preview Validasi</h4>
+                    <Button variant="outline">Unduh Laporan Error</Button>
+                  </div>
+                  <div className="mt-3 overflow-x-auto rounded-card border border-border/60">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-background/70 text-xs text-text-secondary">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold">Baris</th>
+                          <th className="px-3 py-2 font-semibold">NIK</th>
+                          <th className="px-3 py-2 font-semibold">Nama</th>
+                          <th className="px-3 py-2 font-semibold">Status</th>
+                          <th className="px-3 py-2 font-semibold">Catatan</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {previewRows.map((row) => (
+                          <tr key={`${row.row}-${row.nik}`}>
+                            <td className="px-3 py-3 text-text-secondary">{row.row}</td>
+                            <td className="px-3 py-3 text-text-secondary">{row.nik}</td>
+                            <td className="px-3 py-3 text-text-secondary">{row.name}</td>
+                            <td className="px-3 py-3">
+                              <Badge variant={statusVariant(row.status)}>{row.status}</Badge>
+                            </td>
+                            <td className="px-3 py-3 text-text-secondary">{row.detail}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button onClick={handleConfirmImport} disabled={isConfirming}>
+                      {isConfirming ? "Menyimpan..." : "Konfirmasi Import"}
+                    </Button>
+                    <Button variant="outline" onClick={() => {
+                      setPreviewRows([]);
+                      setSummary(null);
+                      setSelectedFile(null);
+                    }}>Batalkan</Button>
+                  </div>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button>Konfirmasi Import</Button>
-                  <Button variant="outline">Batalkan</Button>
-                </div>
-              </div>
+              )}
             </>
           ) : (
             <div className="mt-4 space-y-4">
@@ -222,10 +292,12 @@ const ImportEksporPage = () => {
                 </div>
                 <div>
                   <p className="text-xs text-text-secondary">Format</p>
-                  <select className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-primary">
-                    <option>PDF</option>
-                    <option>Excel</option>
-                    <option>CSV</option>
+                  <select 
+                    className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-primary"
+                    value={exportFormat}
+                    onChange={(e) => setExportFormat(e.target.value)}
+                  >
+                    <option value="csv">CSV</option>
                   </select>
                 </div>
               </div>
@@ -239,7 +311,14 @@ const ImportEksporPage = () => {
                   Sertakan hanya penerima sesuai kuota
                 </label>
               </div>
-              <Button>Ekspor Sekarang</Button>
+              {downloadError && activeTab === "export" ? (
+                <div className="mt-4 rounded-card bg-accent-red/10 px-3 py-2 text-xs text-accent-red">
+                  {downloadError}
+                </div>
+              ) : null}
+              <Button onClick={handleExport} disabled={isExporting}>
+                {isExporting ? "Mengekspor..." : "Ekspor Sekarang"}
+              </Button>
             </div>
           )}
         </Card>
