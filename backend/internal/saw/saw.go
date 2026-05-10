@@ -43,15 +43,23 @@ func HitungSAW(alternatifs []Alternatif, bobot [13]float64, kuota int) []HasilSA
 		}
 	}
 
+	isBenefit := [13]bool{true, true, true, true, true, false, false, false, false, false, true, true, true}
 	// normalize
 	norm := make([][13]float64, m)
 	for i := 0; i < m; i++ {
 		for j := 0; j < 13; j++ {
-			// by default treat all as benefit for this simple implementation
-			if maxv[j] == 0 {
-				norm[i][j] = 0
+			if isBenefit[j] {
+				if maxv[j] == 0 {
+					norm[i][j] = 0
+				} else {
+					norm[i][j] = alternatifs[i].Nilai[j] / maxv[j]
+				}
 			} else {
-				norm[i][j] = alternatifs[i].Nilai[j] / maxv[j]
+				if alternatifs[i].Nilai[j] == 0 {
+					norm[i][j] = 0
+				} else {
+					norm[i][j] = minv[j] / alternatifs[i].Nilai[j]
+				}
 			}
 		}
 	}

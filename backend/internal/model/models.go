@@ -25,19 +25,19 @@ type Warga struct {
 	NoHP               *string   `json:"no_hp,omitempty"`
 	FotoKtpURL         *string   `json:"foto_ktp_url,omitempty"`
 	FotoKKURL          *string   `json:"foto_kk_url,omitempty"`
-	Penghasilan        int64     `json:"penghasilan"`
-	JumlahTanggungan   int       `json:"jumlah_tanggungan"`
-	KondisiTempat      int       `json:"kondisi_tempat"`
-	StatusKepemilikan  int       `json:"status_kepemilikan"`
-	AksesAir           int       `json:"akses_air"`
-	PengeluaranListrik int64     `json:"pengeluaran_listrik"`
-	PengeluaranPangan  int64     `json:"pengeluaran_pangan"`
-	BiayaPendidikan    int64     `json:"biaya_pendidikan"`
-	BiayaKesehatan     int64     `json:"biaya_kesehatan"`
-	CicilanHutang      int64     `json:"cicilan_hutang"`
-	TingkatPendidikan  int       `json:"tingkat_pendidikan"`
-	StatusPekerjaan    int       `json:"status_pekerjaan"`
-	KondisiKesehatan   int       `json:"kondisi_kesehatan"`
+	C1Value            float64   `json:"c1_value"`
+	C2Value            float64   `json:"c2_value"`
+	C3Value            float64   `json:"c3_value"`
+	C4Value            float64   `json:"c4_value"`
+	C5Value            float64   `json:"c5_value"`
+	C6Value            float64   `json:"c6_value"`
+	C7Value            float64   `json:"c7_value"`
+	C8Value            float64   `json:"c8_value"`
+	C9Value            float64   `json:"c9_value"`
+	C10Value           float64   `json:"c10_value"`
+	C11Value           float64   `json:"c11_value"`
+	C12Value           float64   `json:"c12_value"`
+	C13Value           float64   `json:"c13_value"`
 	IsActive           bool      `json:"is_active"`
 	CreatedBy          *string   `json:"created_by,omitempty"`
 	CreatedAt          time.Time `json:"created_at"`

@@ -36,19 +36,19 @@ const formatDate = (value) => {
 };
 
 const buildCriteria = (item) => [
-  { label: "Penghasilan per Bulan", value: formatRupiah(item.penghasilan) },
-  { label: "Jumlah Tanggungan", value: `${item.jumlah_tanggungan} orang` },
-  { label: "Kondisi Tempat Tinggal", value: `Skor ${item.kondisi_tempat}` },
-  { label: "Status Kepemilikan Rumah", value: `Skor ${item.status_kepemilikan}` },
-  { label: "Akses Air Bersih", value: `Skor ${item.akses_air}` },
-  { label: "Pengeluaran Listrik", value: formatRupiah(item.pengeluaran_listrik) },
-  { label: "Pengeluaran Pangan", value: formatRupiah(item.pengeluaran_pangan) },
-  { label: "Biaya Pendidikan", value: formatRupiah(item.biaya_pendidikan) },
-  { label: "Biaya Kesehatan", value: formatRupiah(item.biaya_kesehatan) },
-  { label: "Cicilan / Hutang", value: formatRupiah(item.cicilan_hutang) },
-  { label: "Tingkat Pendidikan KK", value: `Skor ${item.tingkat_pendidikan}` },
-  { label: "Status Pekerjaan KK", value: `Skor ${item.status_pekerjaan}` },
-  { label: "Kondisi Kesehatan", value: `Skor ${item.kondisi_kesehatan}` }
+  { label: "Jumlah Anggota Keluarga", value: `${item.c1_value} orang` },
+  { label: "Jumlah Tanggungan", value: `${item.c2_value} orang` },
+  { label: "Pendidikan Kep. Keluarga", value: `Skor ${item.c3_value}` },
+  { label: "Pekerjaan Kep. Keluarga", value: `Skor ${item.c4_value}` },
+  { label: "Status Rumah", value: `Skor ${item.c5_value}` },
+  { label: "Luas Rumah (m²)", value: `${item.c6_value} m²` },
+  { label: "Daya Listrik", value: `${item.c7_value} VA` },
+  { label: "Jumlah Kendaraan", value: `${item.c8_value} unit` },
+  { label: "Tabungan", value: formatRupiah(item.c9_value) },
+  { label: "Penghasilan per Bulan", value: formatRupiah(item.c10_value) },
+  { label: "Pengeluaran per Bulan", value: formatRupiah(item.c11_value) },
+  { label: "Kondisi Dinding", value: `Skor ${item.c12_value}` },
+  { label: "Akses Air", value: `Skor ${item.c13_value}` }
 ];
 
 const resolveVerification = (item) => {
@@ -83,8 +83,8 @@ const mapWargaResponse = (item) => {
     gender: item.jenis_kelamin === "L" ? "Laki-laki" : "Perempuan",
     birthDate: formatDate(item.tanggal_lahir),
     phone: item.no_hp || "-",
-    penghasilan: item.penghasilan,
-    tanggungan: item.jumlah_tanggungan,
+    penghasilan: item.c10_value,
+    tanggungan: item.c2_value,
     status: item.is_active ? "Aktif" : "Nonaktif",
     verification,
     updated: formatDate(item.updated_at),

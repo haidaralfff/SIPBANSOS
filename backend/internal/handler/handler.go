@@ -59,19 +59,19 @@ type wargaRequest struct {
 	NoHP               string `json:"no_hp"`
 	FotoKtpURL         string `json:"foto_ktp_url"`
 	FotoKKURL          string `json:"foto_kk_url"`
-	Penghasilan        int64  `json:"penghasilan" binding:"required"`
-	JumlahTanggungan   int    `json:"jumlah_tanggungan" binding:"required"`
-	KondisiTempat      int    `json:"kondisi_tempat" binding:"required"`
-	StatusKepemilikan  int    `json:"status_kepemilikan" binding:"required"`
-	AksesAir           int    `json:"akses_air" binding:"required"`
-	PengeluaranListrik int64  `json:"pengeluaran_listrik" binding:"required"`
-	PengeluaranPangan  int64  `json:"pengeluaran_pangan" binding:"required"`
-	BiayaPendidikan    int64  `json:"biaya_pendidikan" binding:"required"`
-	BiayaKesehatan     int64  `json:"biaya_kesehatan" binding:"required"`
-	CicilanHutang      int64  `json:"cicilan_hutang" binding:"required"`
-	TingkatPendidikan  int    `json:"tingkat_pendidikan" binding:"required"`
-	StatusPekerjaan    int    `json:"status_pekerjaan" binding:"required"`
-	KondisiKesehatan   int    `json:"kondisi_kesehatan" binding:"required"`
+	C1Value            float64 `json:"c1_value" binding:"required"`
+	C2Value            float64 `json:"c2_value" binding:"required"`
+	C3Value            float64 `json:"c3_value" binding:"required"`
+	C4Value            float64 `json:"c4_value" binding:"required"`
+	C5Value            float64 `json:"c5_value" binding:"required"`
+	C6Value            float64 `json:"c6_value" binding:"required"`
+	C7Value            float64 `json:"c7_value" binding:"required"`
+	C8Value            float64 `json:"c8_value" binding:"required"`
+	C9Value            float64 `json:"c9_value" binding:"required"`
+	C10Value           float64 `json:"c10_value" binding:"required"`
+	C11Value           float64 `json:"c11_value" binding:"required"`
+	C12Value           float64 `json:"c12_value" binding:"required"`
+	C13Value           float64 `json:"c13_value" binding:"required"`
 }
 
 type sawRunRequest struct {
@@ -331,22 +331,14 @@ func validateWargaRequest(req wargaRequest) (time.Time, error) {
 	if req.JenisKelamin != "L" && req.JenisKelamin != "P" {
 		return time.Time{}, errors.New("jenis_kelamin harus L atau P")
 	}
-	if req.Penghasilan <= 0 {
-		return time.Time{}, errors.New("penghasilan harus lebih dari 0")
+	if req.C1Value < 0 || req.C2Value < 0 {
+		return time.Time{}, errors.New("c1 dan c2 harus >= 0")
 	}
-	if req.JumlahTanggungan <= 0 {
-		return time.Time{}, errors.New("jumlah_tanggungan harus lebih dari 0")
+	if !betweenFloat(req.C3Value, 1, 5) || !betweenFloat(req.C4Value, 1, 5) || !betweenFloat(req.C5Value, 1, 3) || !betweenFloat(req.C12Value, 1, 4) || !betweenFloat(req.C13Value, 1, 3) {
+		return time.Time{}, errors.New("nilai skala kategori tidak valid")
 	}
-	if !between(req.KondisiTempat, 1, 5) ||
-		!between(req.StatusKepemilikan, 1, 5) ||
-		!between(req.AksesAir, 1, 5) ||
-		!between(req.TingkatPendidikan, 1, 5) ||
-		!between(req.StatusPekerjaan, 1, 5) ||
-		!between(req.KondisiKesehatan, 1, 5) {
-		return time.Time{}, errors.New("nilai skala harus 1 sampai 5")
-	}
-	if req.PengeluaranListrik < 0 || req.PengeluaranPangan < 0 || req.BiayaPendidikan < 0 || req.BiayaKesehatan < 0 || req.CicilanHutang < 0 {
-		return time.Time{}, errors.New("nilai rupiah harus >= 0")
+	if req.C6Value < 0 || req.C7Value < 0 || req.C8Value < 0 || req.C9Value < 0 || req.C10Value < 0 || req.C11Value < 0 {
+		return time.Time{}, errors.New("nilai riil harus >= 0")
 	}
 
 	dob, err := time.Parse("2006-01-02", req.TanggalLahir)
@@ -358,6 +350,10 @@ func validateWargaRequest(req wargaRequest) (time.Time, error) {
 }
 
 func between(value int, min int, max int) bool {
+	return value >= min && value <= max
+}
+
+func betweenFloat(value float64, min float64, max float64) bool {
 	return value >= min && value <= max
 }
 
@@ -386,19 +382,19 @@ func wargaToModel(req wargaRequest, dob time.Time, createdBy string) model.Warga
 		NoHP:               stringPointer(req.NoHP),
 		FotoKtpURL:         stringPointer(req.FotoKtpURL),
 		FotoKKURL:          stringPointer(req.FotoKKURL),
-		Penghasilan:        req.Penghasilan,
-		JumlahTanggungan:   req.JumlahTanggungan,
-		KondisiTempat:      req.KondisiTempat,
-		StatusKepemilikan:  req.StatusKepemilikan,
-		AksesAir:           req.AksesAir,
-		PengeluaranListrik: req.PengeluaranListrik,
-		PengeluaranPangan:  req.PengeluaranPangan,
-		BiayaPendidikan:    req.BiayaPendidikan,
-		BiayaKesehatan:     req.BiayaKesehatan,
-		CicilanHutang:      req.CicilanHutang,
-		TingkatPendidikan:  req.TingkatPendidikan,
-		StatusPekerjaan:    req.StatusPekerjaan,
-		KondisiKesehatan:   req.KondisiKesehatan,
+		C1Value:            req.C1Value,
+		C2Value:            req.C2Value,
+		C3Value:            req.C3Value,
+		C4Value:            req.C4Value,
+		C5Value:            req.C5Value,
+		C6Value:            req.C6Value,
+		C7Value:            req.C7Value,
+		C8Value:            req.C8Value,
+		C9Value:            req.C9Value,
+		C10Value:           req.C10Value,
+		C11Value:           req.C11Value,
+		C12Value:           req.C12Value,
+		C13Value:           req.C13Value,
 		CreatedBy:          stringPointer(createdBy),
 	}
 }
