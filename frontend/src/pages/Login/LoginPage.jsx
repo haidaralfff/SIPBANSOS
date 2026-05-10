@@ -91,7 +91,7 @@ const LoginPage = () => {
           </form>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

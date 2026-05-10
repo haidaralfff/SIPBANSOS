@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import StatCard from "../../components/charts/StatCard";
+import { useApi } from "../../hooks/useApi";
 
 const PeopleIcon = (
   <svg className="h-5 w-5 text-primary-orange" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -47,14 +49,65 @@ const CARDS = [
   }
 ];
 
-const OverviewCards = () => {
+const OverviewCards = ({ periodId }) => {
+  const { getSummary, getWarga } = useApi();
+  const [cardsData, setCardsData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!periodId) return;
+    const fetchData = async () => {
+      setIsLoading(true);
+      const [summaryRes, wargaRes] = await Promise.all([
+        getSummary(periodId),
+        getWarga({ limit: 1 })
+      ]);
+
+      const totalWarga = wargaRes.success && wargaRes.data ? wargaRes.data.length : 0; // Sebenarnya butuh total keseluruhan, sementara limit 1 tapi cek length
+      // Idealnya getWarga mereturn total items, misal dari res.total
+
+      let dalamProses = 0;
+      let skorRata = "0.000";
+
+      if (summaryRes.success && summaryRes.data) {
+        dalamProses = summaryRes.data.total || 0;
+      }
+
+      setCardsData([
+        {
+          label: "Warga Terdata",
+          value: totalWarga > 0 ? "..." : "0", // Bisa juga ngambil dari count keseluruhan bila API support
+          delta: "Dari Database",
+          tone: "orange",
+          icon: PeopleIcon
+        },
+        {
+          label: "Diproses di Periode",
+          value: dalamProses.toString(),
+          delta: "Total",
+          tone: "blue",
+          icon: ProcessIcon
+        },
+        {
+          label: "Skor Rata-rata",
+          value: skorRata,
+          delta: "-",
+          tone: "green",
+          icon: ScoreIcon
+        }
+      ]);
+      setIsLoading(false);
+    };
+    fetchData();
+  }, [periodId, getSummary, getWarga]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      {CARDS.map((card, index) => (
+      {(cardsData.length > 0 ? cardsData : CARDS).map((card, index) => (
         <StatCard
           key={card.label}
           {...card}
-          style={{ animationDelay: `${index * 120}ms` }}
+          style={{ animationDelay: `${index * 120}ms`, opacity: isLoading ? 0.5 : 1 }}
           className="animate-fade-up"
         />
       ))}

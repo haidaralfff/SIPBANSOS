@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppShell from "../../components/layout/AppShell";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -12,12 +12,25 @@ const STATUS_VARIANT = {
 };
 
 const SimulasiPage = () => {
-  const { runSAW } = useApi();
+  const { runSAW, getPeriods } = useApi();
   const [kuota, setKuota] = useState("150");
   const [results, setResults] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
   const [lastRunMs, setLastRunMs] = useState(null);
+  const [periods, setPeriods] = useState([]);
+  const [selectedPeriodId, setSelectedPeriodId] = useState("");
+
+  useEffect(() => {
+    const fetchPeriods = async () => {
+      const res = await getPeriods();
+      if (res.success && res.data.length > 0) {
+        setPeriods(res.data);
+        setSelectedPeriodId(res.data[0].id);
+      }
+    };
+    fetchPeriods();
+  }, [getPeriods]);
 
   const topRanking = useMemo(() => results.slice(0, 4), [results]);
 
@@ -57,9 +70,14 @@ const SimulasiPage = () => {
           <div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <p className="text-xs text-text-secondary">Periode</p>
-              <select className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-primary">
-                <option>BLT Q2 2026</option>
-                <option>BLT Q1 2026</option>
+              <select 
+                className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-primary"
+                value={selectedPeriodId}
+                onChange={(e) => setSelectedPeriodId(e.target.value)}
+              >
+                {periods.map(p => (
+                  <option key={p.id} value={p.id}>{p.nama_periode}</option>
+                ))}
               </select>
             </div>
             <div>

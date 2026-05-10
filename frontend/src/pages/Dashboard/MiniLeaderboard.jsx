@@ -1,13 +1,9 @@
+import { useEffect, useState } from "react";
 import Badge from "../../components/ui/Badge";
 import Card from "../../components/ui/Card";
+import { useApi } from "../../hooks/useApi";
 
-const LEADERBOARD = [
-  { name: "Jerome Bell", nik: "3275030102XXXX", rtRw: "02/04", score: 0.892, status: "penerima" },
-  { name: "Courtney Henry", nik: "3275030103XXXX", rtRw: "01/03", score: 0.876, status: "penerima" },
-  { name: "Arlene McCoy", nik: "3275030104XXXX", rtRw: "05/07", score: 0.861, status: "penerima" },
-  { name: "Darrell Steward", nik: "3275030105XXXX", rtRw: "03/02", score: 0.842, status: "cadangan" },
-  { name: "Bessie Cooper", nik: "3275030106XXXX", rtRw: "02/01", score: 0.829, status: "tidak-lolos" }
-];
+
 
 const getInitials = (name) => {
   const parts = name.split(" ");
@@ -20,7 +16,39 @@ const statusLabel = (status) => {
   return "Tidak Lolos";
 };
 
-const MiniLeaderboard = () => {
+const MiniLeaderboard = ({ periodId }) => {
+  const { getRanking } = useApi();
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!periodId) return;
+    const fetchRanking = async () => {
+      setIsLoading(true);
+      const res = await getRanking(periodId);
+      if (res.success && res.data) {
+        const mapped = res.data.slice(0, 5).map((item) => {
+          const rt = item.rt || "";
+          const rw = item.rw || "";
+          const rtRw = rt && rw ? `${rt}/${rw}` : rt || rw || "-";
+          let st = item.status?.toLowerCase() || "";
+          if (st.includes("tidak")) st = "tidak-lolos";
+          return {
+            id: item.warga_id,
+            name: item.nama_lengkap,
+            nik: item.nik,
+            rtRw,
+            score: item.nilai_vi,
+            status: st
+          };
+        });
+        setLeaderboard(mapped);
+      }
+      setIsLoading(false);
+    };
+    fetchRanking();
+  }, [periodId, getRanking]);
+
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between">
@@ -44,27 +72,41 @@ const MiniLeaderboard = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
-            {LEADERBOARD.map((item, index) => (
-              <tr key={item.nik} className="text-sm">
-                <td className="py-3 font-semibold text-text-primary">{index + 1}</td>
-                <td className="py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-orange/15 text-xs font-bold text-primary-orange">
-                      {getInitials(item.name)}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-text-primary">{item.name}</p>
-                      <p className="text-xs text-text-secondary">{item.nik}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-3 text-text-secondary">{item.rtRw}</td>
-                <td className="py-3 font-semibold text-text-primary">{item.score.toFixed(3)}</td>
-                <td className="py-3">
-                  <Badge variant={item.status}>{statusLabel(item.status)}</Badge>
+            {isLoading ? (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-sm text-text-secondary">
+                  Memuat data...
                 </td>
               </tr>
-            ))}
+            ) : leaderboard.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-sm text-text-secondary">
+                  Belum ada data ranking.
+                </td>
+              </tr>
+            ) : (
+              leaderboard.map((item, index) => (
+                <tr key={item.id} className="text-sm">
+                  <td className="py-3 font-semibold text-text-primary">{index + 1}</td>
+                  <td className="py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-orange/15 text-xs font-bold text-primary-orange">
+                        {getInitials(item.name)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-text-primary">{item.name}</p>
+                        <p className="text-xs text-text-secondary">{item.nik}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 text-text-secondary">{item.rtRw}</td>
+                  <td className="py-3 font-semibold text-text-primary">{(item.score || 0).toFixed(3)}</td>
+                  <td className="py-3">
+                    <Badge variant={item.status}>{statusLabel(item.status)}</Badge>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

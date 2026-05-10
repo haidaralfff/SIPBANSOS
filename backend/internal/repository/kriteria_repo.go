@@ -90,6 +90,56 @@ func (r *KriteriaRepository) GetByID(ctx context.Context, id string) (*model.Kri
   return &item, nil
 }
 
+func (r *KriteriaRepository) Create(ctx context.Context, data model.KriteriaBobot) (*model.KriteriaBobot, error) {
+  const q = `
+    INSERT INTO bobot_kriteria (
+      versi, keterangan,
+      bobot_c1, bobot_c2, bobot_c3, bobot_c4, bobot_c5,
+      bobot_c6, bobot_c7, bobot_c8, bobot_c9, bobot_c10,
+      bobot_c11, bobot_c12, bobot_c13,
+      is_active, dibuat_oleh
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+    )
+    RETURNING
+      id, versi, keterangan,
+      bobot_c1, bobot_c2, bobot_c3, bobot_c4, bobot_c5,
+      bobot_c6, bobot_c7, bobot_c8, bobot_c9, bobot_c10,
+      bobot_c11, bobot_c12, bobot_c13,
+      is_active, dibuat_oleh, created_at
+  `
+
+  item, err := scanKriteria(r.db.QueryRow(ctx, q,
+    data.Versi,
+    data.Keterangan,
+    data.BobotC1,
+    data.BobotC2,
+    data.BobotC3,
+    data.BobotC4,
+    data.BobotC5,
+    data.BobotC6,
+    data.BobotC7,
+    data.BobotC8,
+    data.BobotC9,
+    data.BobotC10,
+    data.BobotC11,
+    data.BobotC12,
+    data.BobotC13,
+    data.IsActive,
+    data.DibuatOleh,
+  ).Scan)
+  if err != nil {
+    return nil, err
+  }
+
+  // If this one is active, deactivate others
+  if data.IsActive {
+    _, _ = r.db.Exec(ctx, `UPDATE bobot_kriteria SET is_active = FALSE WHERE id <> $1`, item.ID)
+  }
+
+  return &item, nil
+}
+
 func (r *KriteriaRepository) Update(ctx context.Context, id string, data model.KriteriaBobot, activate bool) (*model.KriteriaBobot, error) {
   tx, err := r.db.Begin(ctx)
   if err != nil {
