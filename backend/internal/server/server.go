@@ -44,6 +44,7 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 			{
 				wargaRead.GET("", h.ListWarga)
 				wargaRead.GET("/:id", h.GetWarga)
+				wargaRead.GET("/:id/history", h.GetWargaHistory)
 			}
 
 			wargaWrite := protected.Group("/warga", middleware.RequireRoles("admin", "petugas"))

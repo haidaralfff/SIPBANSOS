@@ -98,6 +98,38 @@ export const useApi = () => {
     [request]
   );
 
+  const getWargaById = useCallback(
+    async (id) => {
+      const response = await request(`/api/v1/warga/${id}`, {
+        method: "GET"
+      });
+      const payload = await parseJson(response);
+
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal memuat detail warga." };
+      }
+
+      return { success: true, data: payload?.data };
+    },
+    [request]
+  );
+
+  const getWargaHistory = useCallback(
+    async (id) => {
+      const response = await request(`/api/v1/warga/${id}/history`, {
+        method: "GET"
+      });
+      const payload = await parseJson(response);
+
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal memuat riwayat warga." };
+      }
+
+      return { success: true, data: payload?.data || [] };
+    },
+    [request]
+  );
+
   const downloadImportTemplate = useCallback(
     async (format = "xlsx") => {
       const response = await request(`/api/v1/import/template?format=${format}`, {
@@ -332,6 +364,8 @@ export const useApi = () => {
   return {
     request,
     getWarga,
+    getWargaById,
+    getWargaHistory,
     createWarga,
     updateWarga,
     deleteWarga,

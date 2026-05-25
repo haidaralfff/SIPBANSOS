@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppShell from "../../components/layout/AppShell";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -63,6 +64,111 @@ const parseRtRwFilter = (value) => {
   return { rt: rt?.trim() || "", rw: rw?.trim() || "" };
 };
 
+const createEmptyForm = () => ({
+  nama_lengkap: "",
+  nik: "",
+  no_kk: "",
+  tanggal_lahir: "",
+  jenis_kelamin: "L",
+  alamat: "",
+  rt: "",
+  rw: "",
+  no_hp: "",
+  foto_ktp_url: "",
+  foto_kk_url: "",
+  c1_value: "",
+  c2_value: "",
+  c3_value: "",
+  c4_value: "",
+  c5_value: "",
+  c6_value: "",
+  c7_value: "",
+  c8_value: "",
+  c9_value: "",
+  c10_value: "",
+  c11_value: "",
+  c12_value: "",
+  c13_value: ""
+});
+
+const toFieldValue = (value) => (value === null || value === undefined ? "" : String(value));
+
+const buildFormDataFromWarga = (item) => ({
+  nama_lengkap: item.name || "",
+  nik: item.nik || "",
+  no_kk: item.noKk || "",
+  tanggal_lahir: item.tanggalLahir || "",
+  jenis_kelamin: item.jenisKelaminRaw || "L",
+  alamat: item.address || "",
+  rt: item.rt || "",
+  rw: item.rw || "",
+  no_hp: item.no_hp || "",
+  foto_ktp_url: item.foto_ktp_url || "",
+  foto_kk_url: item.foto_kk_url || "",
+  c1_value: toFieldValue(item.c1_value),
+  c2_value: toFieldValue(item.c2_value),
+  c3_value: toFieldValue(item.c3_value),
+  c4_value: toFieldValue(item.c4_value),
+  c5_value: toFieldValue(item.c5_value),
+  c6_value: toFieldValue(item.c6_value),
+  c7_value: toFieldValue(item.c7_value),
+  c8_value: toFieldValue(item.c8_value),
+  c9_value: toFieldValue(item.c9_value),
+  c10_value: toFieldValue(item.c10_value),
+  c11_value: toFieldValue(item.c11_value),
+  c12_value: toFieldValue(item.c12_value),
+  c13_value: toFieldValue(item.c13_value)
+});
+
+const buildWargaPayload = (formData) => {
+  const requiredTextFields = ["nama_lengkap", "nik", "no_kk", "tanggal_lahir", "jenis_kelamin", "alamat"];
+  for (const field of requiredTextFields) {
+    if (!String(formData[field] || "").trim()) {
+      throw new Error("Lengkapi semua data wajib sebelum menyimpan.");
+    }
+  }
+
+  const payload = {
+    nama_lengkap: String(formData.nama_lengkap || "").trim(),
+    nik: String(formData.nik || "").trim(),
+    no_kk: String(formData.no_kk || "").trim(),
+    tanggal_lahir: String(formData.tanggal_lahir || "").trim(),
+    jenis_kelamin: String(formData.jenis_kelamin || "L").trim(),
+    alamat: String(formData.alamat || "").trim(),
+    rt: String(formData.rt || "").trim(),
+    rw: String(formData.rw || "").trim(),
+    no_hp: String(formData.no_hp || "").trim(),
+    foto_ktp_url: String(formData.foto_ktp_url || "").trim(),
+    foto_kk_url: String(formData.foto_kk_url || "").trim()
+  };
+
+  const numericFields = [
+    "c1_value",
+    "c2_value",
+    "c3_value",
+    "c4_value",
+    "c5_value",
+    "c6_value",
+    "c7_value",
+    "c8_value",
+    "c9_value",
+    "c10_value",
+    "c11_value",
+    "c12_value",
+    "c13_value"
+  ];
+
+  for (const field of numericFields) {
+    const value = Number(formData[field]);
+    if (Number.isNaN(value)) {
+      throw new Error(`Nilai ${field.replace("_", " ")} harus diisi dengan angka.`);
+    }
+    payload[field] = value;
+  }
+
+  return payload;
+};
+
 const mapWargaResponse = (item) => {
   const rt = item.rt ?? "";
   const rw = item.rw ?? "";
@@ -78,23 +184,45 @@ const mapWargaResponse = (item) => {
     name: item.nama_lengkap,
     nik: item.nik,
     noKk: item.no_kk,
+    tanggalLahir: item.tanggal_lahir,
+    jenisKelaminRaw: item.jenis_kelamin,
     rtRw,
+    rt,
+    rw,
     address: item.alamat,
     gender: item.jenis_kelamin === "L" ? "Laki-laki" : "Perempuan",
     birthDate: formatDate(item.tanggal_lahir),
     phone: item.no_hp || "-",
+    no_hp: item.no_hp || "",
+    foto_ktp_url: item.foto_ktp_url || "",
+    foto_kk_url: item.foto_kk_url || "",
+    c1_value: item.c1_value,
+    c2_value: item.c2_value,
+    c3_value: item.c3_value,
+    c4_value: item.c4_value,
+    c5_value: item.c5_value,
+    c6_value: item.c6_value,
+    c7_value: item.c7_value,
+    c8_value: item.c8_value,
+    c9_value: item.c9_value,
+    c10_value: item.c10_value,
+    c11_value: item.c11_value,
+    c12_value: item.c12_value,
+    c13_value: item.c13_value,
     penghasilan: item.c10_value,
     tanggungan: item.c2_value,
     status: item.is_active ? "Aktif" : "Nonaktif",
     verification,
     updated: formatDate(item.updated_at),
     documents,
-    criteria: buildCriteria(item)
+    criteria: buildCriteria(item),
+    source: item
   };
 };
 
 const DataWargaPage = () => {
-  const { getWarga } = useApi();
+  const { getWarga, createWarga, updateWarga, getWargaHistory } = useApi();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Semua");
   const [selectedRtRw, setSelectedRtRw] = useState("Semua");
@@ -200,7 +328,140 @@ const DataWargaPage = () => {
 
   const hasNextPage = warga.length === PAGE_SIZE;
 
-  const closeDrawer = () => setSelectedWarga(null);
+  const closeDrawer = () => {
+    setSelectedWarga(null);
+    setShowForm(false);
+    setShowVerify(false);
+    setShowHistory(false);
+  };
+
+  const openCreateForm = () => {
+    setIsEditing(false);
+    setFormError("");
+    setFormData(createEmptyForm());
+    setShowForm(true);
+  };
+
+  const openEditForm = () => {
+    if (!selectedWarga) return;
+    setIsEditing(true);
+    setFormError("");
+    setFormData(buildFormDataFromWarga(selectedWarga));
+    setShowForm(true);
+  };
+
+  const openVerifyForm = () => {
+    if (!selectedWarga) return;
+    setVerifyKtp(Boolean(selectedWarga.foto_ktp_url));
+    setVerifyKk(Boolean(selectedWarga.foto_kk_url));
+    setVerifyError("");
+    setShowVerify(true);
+  };
+
+  const closeForm = () => setShowForm(false);
+  const closeVerify = () => {
+    setShowVerify(false);
+    setVerifyError("");
+  };
+  const closeHistory = () => setShowHistory(false);
+
+  const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState(createEmptyForm());
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const [showVerify, setShowVerify] = useState(false);
+  const [verifyKtp, setVerifyKtp] = useState(false);
+  const [verifyKk, setVerifyKk] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const [historyRecords, setHistoryRecords] = useState([]);
+
+  useEffect(() => {
+    if (!showHistory || !selectedWarga) return;
+
+    let isActive = true;
+    const fetchHistory = async () => {
+      setHistoryLoading(true);
+      setHistoryError("");
+      const result = await getWargaHistory(selectedWarga.id);
+
+      if (!isActive) return;
+
+      if (!result.success) {
+        setHistoryError(result.message || "Gagal memuat riwayat.");
+        setHistoryRecords([]);
+        setHistoryLoading(false);
+        return;
+      }
+
+      setHistoryRecords(result.data || []);
+      setHistoryLoading(false);
+    };
+
+    fetchHistory();
+    return () => {
+      isActive = false;
+    };
+  }, [getWargaHistory, selectedWarga, showHistory]);
+
+  const refreshWargaList = async () => {
+    setIsLoading(true);
+    const { rt, rw } = parseRtRwFilter(selectedRtRw);
+    const result = await getWarga({ page, limit: PAGE_SIZE, q: query.trim(), rt, rw });
+    if (!result.success) {
+      setError(result.message || "Gagal memuat data warga.");
+      setWarga([]);
+      setIsLoading(false);
+      return;
+    }
+    setWarga(result.data.map(mapWargaResponse));
+    setIsLoading(false);
+  };
+
+  const handleSubmitForm = async () => {
+    setFormError("");
+    setFormLoading(true);
+    try {
+      const payload = buildWargaPayload(formData);
+
+      if (isEditing && selectedWarga) {
+        await updateWarga(selectedWarga.id, payload);
+      } else {
+        await createWarga(payload);
+      }
+
+      setShowForm(false);
+      await refreshWargaList();
+    } catch (err) {
+      setFormError(err.message || "Gagal menyimpan data.");
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleSubmitVerify = async () => {
+    if (!selectedWarga) return;
+    setVerifyLoading(true);
+    setVerifyError("");
+    try {
+      const payload = buildWargaPayload(buildFormDataFromWarga(selectedWarga));
+      payload.foto_ktp_url = verifyKtp ? (selectedWarga.foto_ktp_url || "manual://verified") : "";
+      payload.foto_kk_url = verifyKk ? (selectedWarga.foto_kk_url || "manual://verified") : "";
+      await updateWarga(selectedWarga.id, payload);
+      setShowVerify(false);
+      await refreshWargaList();
+    } catch (err) {
+      setVerifyError(err.message || "Gagal menyimpan verifikasi.");
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
 
   return (
     <AppShell
@@ -236,9 +497,19 @@ const DataWargaPage = () => {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline">Import</Button>
-              <Button variant="outline">Ekspor</Button>
-              <Button>Tambah Warga</Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/import-export?tab=import")}
+              >
+                Import
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/import-export?tab=export")}
+              >
+                Ekspor
+              </Button>
+              <Button onClick={openCreateForm}>Tambah Warga</Button>
             </div>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -468,12 +739,117 @@ const DataWargaPage = () => {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button>Ubah Data</Button>
-              <Button variant="outline">Catat Verifikasi</Button>
-              <Button variant="outline">Lihat Riwayat</Button>
+              <Button onClick={openEditForm}>Ubah Data</Button>
+              <Button variant="outline" onClick={openVerifyForm}>Catat Verifikasi</Button>
+              <Button variant="outline" onClick={() => setShowHistory(true)}>Lihat Riwayat</Button>
             </div>
           </div>
         ) : null}
+      </Drawer>
+      <Drawer
+        open={showForm}
+        onClose={closeForm}
+        title={isEditing ? "Ubah Warga" : "Tambah Warga"}
+      >
+        <div className="space-y-4">
+          {formError ? <div className="rounded-card bg-accent-red/10 px-3 py-2 text-xs text-accent-red">{formError}</div> : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input className="rounded-button border border-border px-3 py-2 sm:col-span-2" placeholder="Nama Lengkap" value={formData.nama_lengkap} onChange={(e) => setFormData({ ...formData, nama_lengkap: e.target.value })} />
+            <input className="rounded-button border border-border px-3 py-2" placeholder="NIK" value={formData.nik} onChange={(e) => setFormData({ ...formData, nik: e.target.value })} />
+            <input className="rounded-button border border-border px-3 py-2" placeholder="No. KK" value={formData.no_kk} onChange={(e) => setFormData({ ...formData, no_kk: e.target.value })} />
+            <input className="rounded-button border border-border px-3 py-2 sm:col-span-2" type="date" placeholder="Tanggal Lahir" value={formData.tanggal_lahir} onChange={(e) => setFormData({ ...formData, tanggal_lahir: e.target.value })} />
+            <select className="rounded-button border border-border px-3 py-2" value={formData.jenis_kelamin} onChange={(e) => setFormData({ ...formData, jenis_kelamin: e.target.value })}>
+              <option value="L">Laki-laki</option>
+              <option value="P">Perempuan</option>
+            </select>
+            <input className="rounded-button border border-border px-3 py-2" placeholder="No. HP" value={formData.no_hp} onChange={(e) => setFormData({ ...formData, no_hp: e.target.value })} />
+            <input className="rounded-button border border-border px-3 py-2 sm:col-span-2" placeholder="Alamat" value={formData.alamat} onChange={(e) => setFormData({ ...formData, alamat: e.target.value })} />
+            <input className="rounded-button border border-border px-3 py-2" placeholder="RT" value={formData.rt} onChange={(e) => setFormData({ ...formData, rt: e.target.value })} />
+            <input className="rounded-button border border-border px-3 py-2" placeholder="RW" value={formData.rw} onChange={(e) => setFormData({ ...formData, rw: e.target.value })} />
+            <input className="rounded-button border border-border px-3 py-2 sm:col-span-2" placeholder="URL Foto KTP" value={formData.foto_ktp_url} onChange={(e) => setFormData({ ...formData, foto_ktp_url: e.target.value })} />
+            <input className="rounded-button border border-border px-3 py-2 sm:col-span-2" placeholder="URL Foto KK" value={formData.foto_kk_url} onChange={(e) => setFormData({ ...formData, foto_kk_url: e.target.value })} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[["c1_value", "C1 - Jumlah Anggota Keluarga"], ["c2_value", "C2 - Jumlah Tanggungan"], ["c3_value", "C3 - Pendidikan"], ["c4_value", "C4 - Pekerjaan"], ["c5_value", "C5 - Status Rumah"], ["c6_value", "C6 - Luas Rumah"], ["c7_value", "C7 - Daya Listrik"], ["c8_value", "C8 - Kendaraan"], ["c9_value", "C9 - Tabungan"], ["c10_value", "C10 - Penghasilan"], ["c11_value", "C11 - Pengeluaran"], ["c12_value", "C12 - Kondisi Dinding"], ["c13_value", "C13 - Akses Air"]].map(([field, label]) => (
+              <input
+                key={field}
+                className="rounded-button border border-border px-3 py-2"
+                type="number"
+                step="any"
+                placeholder={label}
+                value={formData[field]}
+                onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
+              />
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleSubmitForm} disabled={formLoading}>{formLoading ? (isEditing ? "Menyimpan..." : "Membuat...") : (isEditing ? "Simpan" : "Buat")}</Button>
+            <Button variant="outline" onClick={closeForm}>Batal</Button>
+          </div>
+        </div>
+      </Drawer>
+
+      <Drawer
+        open={showVerify}
+        onClose={closeVerify}
+        title="Catat Verifikasi"
+      >
+        {selectedWarga ? (
+          <div className="space-y-4">
+            {verifyError ? <div className="rounded-card bg-accent-red/10 px-3 py-2 text-xs text-accent-red">{verifyError}</div> : null}
+            <p className="text-sm text-text-secondary">Tandai dokumen yang sudah lengkap untuk {selectedWarga.name}.</p>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={verifyKtp} onChange={(e) => setVerifyKtp(e.target.checked)} /> KTP lengkap</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={verifyKk} onChange={(e) => setVerifyKk(e.target.checked)} /> KK lengkap</label>
+            <div className="flex gap-2">
+              <Button onClick={handleSubmitVerify} disabled={verifyLoading}>{verifyLoading ? "Menyimpan..." : "Simpan"}</Button>
+              <Button variant="outline" onClick={closeVerify}>Batal</Button>
+            </div>
+          </div>
+        ) : null}
+      </Drawer>
+
+      <Drawer
+        open={showHistory}
+        onClose={closeHistory}
+        title="Riwayat Perubahan"
+      >
+        <div className="space-y-4">
+          {historyError ? <div className="rounded-card bg-accent-red/10 px-3 py-2 text-xs text-accent-red">{historyError}</div> : null}
+          {historyLoading ? (
+            <p className="text-sm text-text-secondary">Memuat riwayat...</p>
+          ) : historyRecords.length === 0 ? (
+            <p className="text-sm text-text-secondary">Belum ada riwayat untuk warga ini.</p>
+          ) : (
+            <div className="space-y-3">
+              {historyRecords.map((record) => {
+                const latest = record.data_baru || {};
+                const previous = record.data_lama || {};
+                const actor = record.actor_name || record.user_id || "Sistem";
+                const summary = latest.nama_lengkap || previous.nama_lengkap || selectedWarga?.name || "Warga";
+
+                return (
+                  <div key={record.id} className="rounded-card border border-border bg-white p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-text-primary">{record.aksi}</p>
+                        <p className="text-xs text-text-secondary">{actor} • {formatDate(record.created_at)}</p>
+                      </div>
+                      <Badge variant={record.aksi === "create" ? "success" : "info"}>{record.tabel}</Badge>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-xs text-text-secondary">
+                      <p><span className="font-semibold">Nama:</span> {summary}</p>
+                      <p><span className="font-semibold">NIK:</span> {latest.nik || previous.nik || "-"}</p>
+                      <p><span className="font-semibold">RT/RW:</span> {(latest.rt && latest.rw) ? `${latest.rt}/${latest.rw}` : (previous.rt && previous.rw ? `${previous.rt}/${previous.rw}` : "-")}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={closeHistory}>Tutup</Button>
+          </div>
+        </div>
       </Drawer>
     </AppShell>
   );

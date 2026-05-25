@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type User struct {
 	ID           string `json:"id"`
@@ -42,6 +45,20 @@ type Warga struct {
 	CreatedBy          *string   `json:"created_by,omitempty"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+type AuditLog struct {
+	ID        int64           `json:"id"`
+	UserID    string          `json:"user_id"`
+	ActorName string          `json:"actor_name"`
+	Aksi      string          `json:"aksi"`
+	Tabel     string          `json:"tabel"`
+	RecordID  string          `json:"record_id"`
+	DataLama  json.RawMessage `json:"data_lama,omitempty"`
+	DataBaru  json.RawMessage `json:"data_baru,omitempty"`
+	IPAddress string          `json:"ip_address,omitempty"`
+	UserAgent string          `json:"user_agent,omitempty"`
+	CreatedAt time.Time       `json:"created_at"`
 }
 
 type KriteriaBobot struct {

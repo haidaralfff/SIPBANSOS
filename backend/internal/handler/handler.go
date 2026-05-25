@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -23,6 +24,7 @@ type Handler struct {
 	auth     *auth.Manager
 	users    *repository.UserRepository
 	warga    *repository.WargaRepository
+	audit    *repository.AuditRepository
 	kriteria *repository.KriteriaRepository
 	reports  *repository.ReportRepository
 }
@@ -33,6 +35,7 @@ func NewHandler(db *pgxpool.Pool, authManager *auth.Manager) *Handler {
 		auth:     authManager,
 		users:    repository.NewUserRepository(db),
 		warga:    repository.NewWargaRepository(db),
+		audit:    repository.NewAuditRepository(db),
 		kriteria: repository.NewKriteriaRepository(db),
 		reports:  repository.NewReportRepository(db),
 	}
@@ -226,6 +229,18 @@ func (h *Handler) CreateWarga(c *gin.Context) {
 		return
 	}
 
+	if userID, ok := c.Get("user_id"); ok {
+		_ = h.audit.Create(c.Request.Context(), model.AuditLog{
+			UserID:    userID.(string),
+			Aksi:      "create",
+			Tabel:     "warga",
+			RecordID:  created.ID,
+			DataBaru:  mustJSON(created),
+			IPAddress: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+		})
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"data": created})
 }
 
@@ -246,6 +261,15 @@ func (h *Handler) GetWarga(c *gin.Context) {
 
 func (h *Handler) UpdateWarga(c *gin.Context) {
 	id := c.Param("id")
+	previous, err := h.warga.GetByID(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, repository.ErrWargaNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "warga not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch warga"})
+		return
+	}
 	var req wargaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -269,7 +293,31 @@ func (h *Handler) UpdateWarga(c *gin.Context) {
 		return
 	}
 
+	if userID, ok := c.Get("user_id"); ok {
+		_ = h.audit.Create(c.Request.Context(), model.AuditLog{
+			UserID:    userID.(string),
+			Aksi:      "update",
+			Tabel:     "warga",
+			RecordID:  updated.ID,
+			DataLama:  mustJSON(previous),
+			DataBaru:  mustJSON(updated),
+			IPAddress: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": updated})
+}
+
+func (h *Handler) GetWargaHistory(c *gin.Context) {
+	id := c.Param("id")
+	items, err := h.audit.ListByRecord(c.Request.Context(), "warga", id, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch history"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": items})
 }
 
 func (h *Handler) DeleteWarga(c *gin.Context) {
@@ -405,4 +453,12 @@ func stringPointer(value string) *string {
 		return nil
 	}
 	return &trimmed
+}
+
+func mustJSON(value any) json.RawMessage {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil
+	}
+	return data
 }
