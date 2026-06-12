@@ -264,3 +264,31 @@ func buildKriteriaResponse(bobot *model.KriteriaBobot) kriteriaResponse {
 		TotalWeight: total,
 	}
 }
+
+func (h *Handler) ListKriteriaVersions(c *gin.Context) {
+	rows, err := h.db.Query(c.Request.Context(), "SELECT id, versi, keterangan, is_active FROM bobot_kriteria ORDER BY created_at DESC")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list weight versions: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	type versionItem struct {
+		ID         string  `json:"id"`
+		Versi      string  `json:"versi"`
+		Keterangan *string `json:"keterangan,omitempty"`
+		IsActive   bool    `json:"is_active"`
+	}
+
+	var list []versionItem
+	for rows.Next() {
+		var item versionItem
+		if err := rows.Scan(&item.ID, &item.Versi, &item.Keterangan, &item.IsActive); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to scan weight version"})
+			return
+		}
+		list = append(list, item)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": list})
+}

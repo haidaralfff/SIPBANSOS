@@ -78,7 +78,9 @@ type wargaRequest struct {
 }
 
 type sawRunRequest struct {
-	Kuota int `json:"kuota"`
+	Kuota     int    `json:"kuota"`
+	PeriodeID string `json:"periode_id"`
+	BobotID   string `json:"bobot_id"`
 }
 
 // Auth handlers
@@ -338,23 +340,116 @@ func (h *Handler) DeleteWarga(c *gin.Context) {
 func (h *Handler) RunSAW(c *gin.Context) {
 	var req sawRunRequest
 	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
 		return
 	}
 
-	kuota := req.Kuota
-	if kuota <= 0 {
-		kuota = 1
+	if req.PeriodeID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "periode_id wajib diisi"})
+		return
 	}
 
-	// For demo, create dummy alternatif and run SAW
-	alternatif := []saw.Alternatif{
-		{ID: 1, Nama: "Ali", Nilai: [13]float64{5, 4, 3, 3, 4, 2, 2, 3, 3, 1, 4, 5, 2}},
-		{ID: 2, Nama: "Budi", Nilai: [13]float64{3, 3, 4, 4, 3, 3, 3, 2, 2, 2, 3, 3, 3}},
+	ctx := c.Request.Context()
+
+	var periodName string
+	var periodKuota int
+	var bobotID string
+	err := h.db.QueryRow(ctx, "SELECT nama_periode, kuota, bobot_id FROM periode_bansos WHERE id = $1", req.PeriodeID).Scan(&periodName, &periodKuota, &bobotID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Periode bansos tidak ditemukan"})
+		return
 	}
-	bobot := [13]float64{0.15, 0.10, 0.08, 0.08, 0.05, 0.07, 0.08, 0.08, 0.07, 0.07, 0.07, 0.08, 0.02}
-	hasil := saw.HitungSAW(alternatif, bobot, kuota)
-	c.JSON(http.StatusOK, gin.H{"hasil": hasil, "kuota": kuota})
+
+	resolvedKuota := req.Kuota
+	if resolvedKuota <= 0 {
+		resolvedKuota = periodKuota
+	}
+	if resolvedKuota <= 0 {
+		resolvedKuota = 1
+	}
+
+	resolvedBobotID := req.BobotID
+	if resolvedBobotID == "" {
+		resolvedBobotID = bobotID
+	}
+	if resolvedBobotID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "versi bobot wajib diisi atau ditentukan di periode"})
+		return
+	}
+
+	var b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13 float64
+	err = h.db.QueryRow(ctx, `
+		SELECT bobot_c1, bobot_c2, bobot_c3, bobot_c4, bobot_c5, bobot_c6, bobot_c7, bobot_c8, bobot_c9, bobot_c10, bobot_c11, bobot_c12, bobot_c13
+		FROM bobot_kriteria WHERE id = $1
+	`, resolvedBobotID).Scan(&b1, &b2, &b3, &b4, &b5, &b6, &b7, &b8, &b9, &b10, &b11, &b12, &b13)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memuat bobot kriteria untuk periode ini"})
+		return
+	}
+	bobot := [13]float64{b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13}
+
+	rows, err := h.db.Query(ctx, `
+		SELECT id, nama_lengkap, c1_value, c2_value, c3_value, c4_value, c5_value, c6_value, c7_value, c8_value, c9_value, c10_value, c11_value, c12_value, c13_value
+		FROM warga
+		WHERE deleted_at IS NULL AND is_active = true AND foto_ktp_url IS NOT NULL AND foto_ktp_url <> '' AND foto_kk_url IS NOT NULL AND foto_kk_url <> ''
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memuat data warga dari database: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var alternatifs []saw.Alternatif
+	for rows.Next() {
+		var a saw.Alternatif
+		var c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13 float64
+		err := rows.Scan(&a.ID, &a.Nama, &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10, &c11, &c12, &c13)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca data warga"})
+			return
+		}
+		a.Nilai = [13]float64{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13}
+		alternatifs = append(alternatifs, a)
+	}
+
+	if len(alternatifs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak ada data warga terverifikasi (dokumen KTP & KK lengkap) untuk dihitung"})
+		return
+	}
+
+	hasil := saw.HitungSAW(alternatifs, bobot, resolvedKuota)
+
+	tx, err := h.db.Begin(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memulai transaksi database"})
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, "DELETE FROM hasil_saw WHERE periode_id = $1", req.PeriodeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membersihkan data perhitungan lama"})
+		return
+	}
+
+	for _, res := range hasil {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO hasil_saw (periode_id, warga_id, nilai_vi, ranking, status)
+			VALUES ($1, $2, $3, $4, $5)
+		`, req.PeriodeID, res.AlternatifID, res.Vi, res.Ranking, res.Status)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan hasil perhitungan warga " + res.Nama + ": " + err.Error()})
+			return
+		}
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal meresmikan penyimpanan hasil transaksi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"hasil": hasil, "kuota": resolvedKuota})
 }
 
 func parseIntQuery(c *gin.Context, key string, fallback int) int {

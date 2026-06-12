@@ -5,13 +5,13 @@ import (
 )
 
 type Alternatif struct {
-	ID    int
+	ID    string
 	Nama  string
 	Nilai [13]float64
 }
 
 type HasilSAW struct {
-	AlternatifID int     `json:"id"`
+	AlternatifID string  `json:"id"`
 	Nama         string  `json:"nama"`
 	Vi           float64 `json:"vi"`
 	Ranking      int     `json:"ranking"`

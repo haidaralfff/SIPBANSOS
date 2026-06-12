@@ -218,11 +218,13 @@ export const useApi = () => {
   );
 
   const runSAW = useCallback(
-    async ({ kuota = 1 } = {}) => {
+    async ({ kuota = 1, periodeId, bobotId } = {}) => {
       const response = await request("/api/v1/saw/run", {
         method: "POST",
         body: JSON.stringify({
-          kuota
+          kuota,
+          periode_id: periodeId,
+          bobot_id: bobotId
         })
       });
 
@@ -357,6 +359,18 @@ export const useApi = () => {
     return { success: true, data: payload?.data || [] };
   }, [request]);
 
+  const getKriteriaVersions = useCallback(async () => {
+    const response = await request("/api/v1/kriteria/versions", {
+      method: "GET"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memuat versi bobot." };
+    }
+    return { success: true, data: payload?.data || [] };
+  }, [request]);
+
   const getRanking = useCallback(async (periodId) => {
     const url = periodId ? `/api/v1/reports/ranking?periode_id=${encodeURIComponent(periodId)}` : "/api/v1/reports/ranking";
     const response = await request(url, {
@@ -398,6 +412,7 @@ export const useApi = () => {
     createKriteria,
     updateKriteria,
     getPeriods,
+    getKriteriaVersions,
     getRanking,
     getSummary,
     validateImport,
