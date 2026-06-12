@@ -135,6 +135,18 @@ Output build akan berada di folder `dist/`
 
 ---
 
+## 👤 User Akun
+
+
+| Email | Username | Password | Role | Deskripsi |
+|---------|----------|------|-----------|-----------|
+| admin@sipbansos.local | admin | Admin123! | Admin | Admin |
+| [EMAIL_ADDRESS] | kades | Kades123! | Kepala Desa | Kepala Desa |
+| [EMAIL_ADDRESS] | petugas | Petugas123! | Petugas Survei | Petugas Survei |
+| [EMAIL_ADDRESS] | operator | Operator123! | Operator RW/RT | Operator RW/RT |
+
+---
+
 ## 📖 Fitur Utama
 
 ### ✅ Autentikasi & Otorisasi

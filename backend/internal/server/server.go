@@ -44,6 +44,7 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 			{
 				wargaRead.GET("", h.ListWarga)
 				wargaRead.GET("/:id", h.GetWarga)
+				wargaRead.GET("/:id/history", h.GetWargaHistory)
 			}
 
 			wargaWrite := protected.Group("/warga", middleware.RequireRoles("admin", "petugas"))
@@ -52,6 +53,8 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 				wargaWrite.PUT("/:id", h.UpdateWarga)
 				wargaWrite.DELETE("/:id", h.DeleteWarga)
 			}
+
+			protected.POST("/upload", h.UploadFile)
 
 			reportGroup := protected.Group("/reports", middleware.RequireRoles("admin", "kepala_desa"))
 			{

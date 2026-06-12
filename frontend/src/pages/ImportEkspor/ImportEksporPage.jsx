@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import AppShell from "../../components/layout/AppShell";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -30,6 +31,15 @@ const ImportEksporPage = () => {
   const [isValidating, setIsValidating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [importMessage, setImportMessage] = useState("");
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab === "export") setActiveTab("export");
+    else if (tab === "import") setActiveTab("import");
+  }, [location.search]);
 
   useEffect(() => {
     const fetchPeriods = async () => {

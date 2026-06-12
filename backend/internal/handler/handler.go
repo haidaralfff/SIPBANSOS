@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -23,6 +24,7 @@ type Handler struct {
 	auth     *auth.Manager
 	users    *repository.UserRepository
 	warga    *repository.WargaRepository
+	audit    *repository.AuditRepository
 	kriteria *repository.KriteriaRepository
 	reports  *repository.ReportRepository
 }
@@ -33,6 +35,7 @@ func NewHandler(db *pgxpool.Pool, authManager *auth.Manager) *Handler {
 		auth:     authManager,
 		users:    repository.NewUserRepository(db),
 		warga:    repository.NewWargaRepository(db),
+		audit:    repository.NewAuditRepository(db),
 		kriteria: repository.NewKriteriaRepository(db),
 		reports:  repository.NewReportRepository(db),
 	}
@@ -59,19 +62,19 @@ type wargaRequest struct {
 	NoHP               string `json:"no_hp"`
 	FotoKtpURL         string `json:"foto_ktp_url"`
 	FotoKKURL          string `json:"foto_kk_url"`
-	C1Value            float64 `json:"c1_value" binding:"required"`
-	C2Value            float64 `json:"c2_value" binding:"required"`
-	C3Value            float64 `json:"c3_value" binding:"required"`
-	C4Value            float64 `json:"c4_value" binding:"required"`
-	C5Value            float64 `json:"c5_value" binding:"required"`
-	C6Value            float64 `json:"c6_value" binding:"required"`
-	C7Value            float64 `json:"c7_value" binding:"required"`
-	C8Value            float64 `json:"c8_value" binding:"required"`
-	C9Value            float64 `json:"c9_value" binding:"required"`
-	C10Value           float64 `json:"c10_value" binding:"required"`
-	C11Value           float64 `json:"c11_value" binding:"required"`
-	C12Value           float64 `json:"c12_value" binding:"required"`
-	C13Value           float64 `json:"c13_value" binding:"required"`
+	C1Value            float64 `json:"c1_value"`
+	C2Value            float64 `json:"c2_value"`
+	C3Value            float64 `json:"c3_value"`
+	C4Value            float64 `json:"c4_value"`
+	C5Value            float64 `json:"c5_value"`
+	C6Value            float64 `json:"c6_value"`
+	C7Value            float64 `json:"c7_value"`
+	C8Value            float64 `json:"c8_value"`
+	C9Value            float64 `json:"c9_value"`
+	C10Value           float64 `json:"c10_value"`
+	C11Value           float64 `json:"c11_value"`
+	C12Value           float64 `json:"c12_value"`
+	C13Value           float64 `json:"c13_value"`
 }
 
 type sawRunRequest struct {
@@ -226,6 +229,18 @@ func (h *Handler) CreateWarga(c *gin.Context) {
 		return
 	}
 
+	if userID, ok := c.Get("user_id"); ok {
+		_ = h.audit.Create(c.Request.Context(), model.AuditLog{
+			UserID:    userID.(string),
+			Aksi:      "create",
+			Tabel:     "warga",
+			RecordID:  created.ID,
+			DataBaru:  mustJSON(created),
+			IPAddress: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+		})
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"data": created})
 }
 
@@ -246,6 +261,15 @@ func (h *Handler) GetWarga(c *gin.Context) {
 
 func (h *Handler) UpdateWarga(c *gin.Context) {
 	id := c.Param("id")
+	previous, err := h.warga.GetByID(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, repository.ErrWargaNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "warga not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch warga"})
+		return
+	}
 	var req wargaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -269,7 +293,31 @@ func (h *Handler) UpdateWarga(c *gin.Context) {
 		return
 	}
 
+	if userID, ok := c.Get("user_id"); ok {
+		_ = h.audit.Create(c.Request.Context(), model.AuditLog{
+			UserID:    userID.(string),
+			Aksi:      "update",
+			Tabel:     "warga",
+			RecordID:  updated.ID,
+			DataLama:  mustJSON(previous),
+			DataBaru:  mustJSON(updated),
+			IPAddress: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": updated})
+}
+
+func (h *Handler) GetWargaHistory(c *gin.Context) {
+	id := c.Param("id")
+	items, err := h.audit.ListByRecord(c.Request.Context(), "warga", id, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch history"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": items})
 }
 
 func (h *Handler) DeleteWarga(c *gin.Context) {
@@ -405,4 +453,44 @@ func stringPointer(value string) *string {
 		return nil
 	}
 	return &trimmed
+}
+
+func mustJSON(value any) json.RawMessage {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil
+	}
+	return data
+}
+
+func (h *Handler) UploadFile(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Gagal menerima file: " + err.Error()})
+		return
+	}
+
+	ext := strings.ToLower(file.Filename)
+	if !strings.HasSuffix(ext, ".jpg") && !strings.HasSuffix(ext, ".jpeg") && !strings.HasSuffix(ext, ".png") && !strings.HasSuffix(ext, ".webp") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format file tidak didukung. Gunakan JPG, JPEG, PNG, atau WEBP."})
+		return
+	}
+
+	if file.Size > 5*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran file maksimal 5MB."})
+		return
+	}
+
+	filename := strconv.FormatInt(time.Now().UnixNano(), 10) + "_" + file.Filename
+	dst := "./uploads/" + filename
+
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file: " + err.Error()})
+		return
+	}
+
+	urlPath := "/api/v1/uploads/" + filename
+	c.JSON(http.StatusOK, gin.H{
+		"url": urlPath,
+	})
 }
