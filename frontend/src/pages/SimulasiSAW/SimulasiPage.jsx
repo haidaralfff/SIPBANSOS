@@ -80,7 +80,7 @@ const SimulasiPage = () => {
   };
 
   return (
-    <AppShell title="Simulasi SAW" subtitle="Jalankan perhitungan SAW dan analisis hasil ranking." showRightPanel={false}>
+    <AppShell title="Perhitungan SAW" subtitle="Jalankan perhitungan SAW dan analisis hasil ranking." showRightPanel={false}>
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3">

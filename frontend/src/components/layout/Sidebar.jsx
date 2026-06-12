@@ -86,7 +86,7 @@ const NAV_ITEMS = [
   },
   { label: "Import / Ekspor", icon: SwapIcon, path: "/import-export", roles: ["admin", "petugas"] },
   { label: "Kriteria & Bobot", icon: ScaleIcon, path: "/kriteria", roles: ["admin"] },
-  { label: "Simulasi SAW", icon: CalculatorIcon, path: "/simulasi", roles: ["admin", "kepala_desa"] },
+  { label: "Perhitungan SAW", icon: CalculatorIcon, path: "/simulasi", roles: ["admin", "kepala_desa"] },
   { label: "Laporan", icon: FileIcon, path: "/laporan", roles: ["admin", "kepala_desa"] },
   { label: "Pengguna", icon: UserIcon, path: "/pengguna", roles: ["admin"] },
   { label: "Pengaturan", icon: SettingsIcon, path: "/settings", roles: ["admin"] }

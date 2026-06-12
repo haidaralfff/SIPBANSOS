@@ -70,6 +70,19 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 			}
 
 			protected.POST("/saw/run", middleware.RequireRoles("admin", "kepala_desa"), h.RunSAW)
+
+			settingsGroup := protected.Group("/settings")
+			{
+				settingsGroup.GET("", h.GetSettings)
+				settingsGroup.PUT("", middleware.RequireRoles("admin"), h.UpdateSettings)
+			}
+
+			periodsGroup := protected.Group("/periods", middleware.RequireRoles("admin"))
+			{
+				periodsGroup.POST("", h.CreatePeriode)
+				periodsGroup.PUT("/:id", h.UpdatePeriode)
+				periodsGroup.DELETE("/:id", h.DeletePeriode)
+			}
 		}
 	}
 }

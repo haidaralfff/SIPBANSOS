@@ -376,6 +376,69 @@ export const useApi = () => {
     return { success: true, data: payload?.data || [] };
   }, [request]);
 
+  const getSettings = useCallback(async () => {
+    const response = await request("/api/v1/settings", {
+      method: "GET"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memuat pengaturan." };
+    }
+    return { success: true, data: payload };
+  }, [request]);
+
+  const updateSettings = useCallback(async (data) => {
+    const response = await request("/api/v1/settings", {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal menyimpan pengaturan." };
+    }
+    return { success: true, message: payload?.message };
+  }, [request]);
+
+  const createPeriod = useCallback(async (data) => {
+    const response = await request("/api/v1/periods", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal membuat periode." };
+    }
+    return { success: true, id: payload?.id };
+  }, [request]);
+
+  const updatePeriod = useCallback(async (id, data) => {
+    const response = await request(`/api/v1/periods/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal mengubah periode." };
+    }
+    return { success: true };
+  }, [request]);
+
+  const deletePeriod = useCallback(async (id) => {
+    const response = await request(`/api/v1/periods/${id}`, {
+      method: "DELETE"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal menghapus periode." };
+    }
+    return { success: true };
+  }, [request]);
+
   const getKriteriaVersions = useCallback(async () => {
     const response = await request("/api/v1/kriteria/versions", {
       method: "GET"
@@ -489,6 +552,11 @@ export const useApi = () => {
     createKriteria,
     updateKriteria,
     getPeriods,
+    getSettings,
+    updateSettings,
+    createPeriod,
+    updatePeriod,
+    deletePeriod,
     getKriteriaVersions,
     getRanking,
     getSummary,
