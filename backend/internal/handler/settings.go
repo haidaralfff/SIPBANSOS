@@ -283,9 +283,27 @@ func (h *Handler) DeletePeriode(c *gin.Context) {
 		return
 	}
 
-	_, err = h.db.Exec(ctx, "DELETE FROM periode_bansos WHERE id = $1", id)
+	tx, err := h.db.Begin(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal memulai transaksi: " + err.Error()})
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, "DELETE FROM hasil_saw WHERE periode_id = $1", id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal membersihkan hasil perhitungan terkait: " + err.Error()})
+		return
+	}
+
+	_, err = tx.Exec(ctx, "DELETE FROM periode_bansos WHERE id = $1", id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal menghapus periode: " + err.Error()})
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal menyimpan transaksi penghapusan: " + err.Error()})
 		return
 	}
 

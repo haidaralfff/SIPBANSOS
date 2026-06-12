@@ -50,6 +50,10 @@ const PengaturanPage = () => {
     status: "draft"
   });
 
+  // Delete period confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [periodToDelete, setPeriodToDelete] = useState(null);
+
   const fetchSettingsAndPeriods = async () => {
     setIsLoading(true);
     try {
@@ -231,16 +235,25 @@ const PengaturanPage = () => {
     }
   };
 
-  const handleDeletePeriod = async (id) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus periode ini? Tindakan ini akan menghapus semua data terkait secara permanen.")) return;
-    const res = await deletePeriod(id);
+  const triggerDeletePeriod = (period) => {
+    setPeriodToDelete(period);
+    setIsDeleteModalOpen(true);
+  };
+
+  const executeDeletePeriod = async () => {
+    if (!periodToDelete) return;
+    setIsDeleteModalOpen(false);
+    
+    const toastId = toast.loading("Menghapus periode...");
+    const res = await deletePeriod(periodToDelete.id);
     if (res.success) {
-      toast.success("Periode berhasil dihapus");
+      toast.success("Periode berhasil dihapus", { id: toastId });
       const newPeriodsRes = await getPeriods();
       if (newPeriodsRes.success) setPeriods(newPeriodsRes.data);
     } else {
-      toast.error(res.message);
+      toast.error(res.message || "Gagal menghapus periode", { id: toastId });
     }
+    setPeriodToDelete(null);
   };
 
   const formatDate = (dateStr) => {
@@ -411,7 +424,7 @@ const PengaturanPage = () => {
                     </svg>
                   </button>
                   <button
-                    onClick={() => handleDeletePeriod(p.id)}
+                    onClick={() => triggerDeletePeriod(p)}
                     className="p-1 hover:text-danger text-text-secondary transition-colors"
                     title="Hapus"
                   >
@@ -542,6 +555,40 @@ const PengaturanPage = () => {
           </div>
         </form>
       </Drawer>
+      {/* Modal Konfirmasi Hapus Periode */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button 
+            type="button" 
+            className="fixed inset-0 bg-black/45 transition-opacity" 
+            onClick={() => setIsDeleteModalOpen(false)}
+          />
+          <div className="relative w-full max-w-sm rounded-2xl bg-surface p-6 shadow-2xl z-10 space-y-4 border border-border">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent-red/10 text-accent-red">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-text-primary">Hapus Periode Bansos</h3>
+                <p className="text-xs text-text-secondary mt-1">
+                  Apakah Anda yakin ingin menghapus periode <strong>{periodToDelete?.nama_periode}</strong>? Tindakan ini akan menghapus semua data perhitungan terkait secara permanen dan tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="danger" className="flex-1 text-xs" onClick={executeDeletePeriod}>
+                Hapus
+              </Button>
+              <Button variant="outline" className="flex-1 text-xs" onClick={() => setIsDeleteModalOpen(false)}>
+                Batal
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 };

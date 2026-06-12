@@ -15,7 +15,8 @@ const DashboardPage = () => {
       const res = await getPeriods();
       if (res.success && res.data.length > 0) {
         setPeriods(res.data);
-        setSelectedPeriod(res.data[0]);
+        const active = res.data.find(p => p.status === "aktif");
+        setSelectedPeriod(active || res.data[0]);
       }
     };
     fetchPeriods();

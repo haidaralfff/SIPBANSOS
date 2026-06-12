@@ -1,7 +1,8 @@
 const VARIANTS = {
   primary: "bg-primary-orange text-white hover:bg-primary-orange/90",
   ghost: "bg-transparent text-text-primary hover:bg-background/70",
-  outline: "border border-border bg-white text-text-primary hover:bg-background/60"
+  outline: "border border-border bg-white text-text-primary hover:bg-background/60",
+  danger: "bg-accent-red text-white hover:bg-accent-red/90"
 };
 
 const Button = ({ children, variant = "primary", className = "", ...props }) => {
