@@ -12,7 +12,7 @@ const STATUS_VARIANT = {
 };
 
 const SimulasiPage = () => {
-  const { runSAW, getPeriods } = useApi();
+  const { runSAW, getPeriods, getKriteriaVersions } = useApi();
   const [kuota, setKuota] = useState("150");
   const [results, setResults] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -20,17 +20,25 @@ const SimulasiPage = () => {
   const [lastRunMs, setLastRunMs] = useState(null);
   const [periods, setPeriods] = useState([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState("");
+  const [bobotVersions, setBobotVersions] = useState([]);
+  const [selectedBobotId, setSelectedBobotId] = useState("");
 
   useEffect(() => {
-    const fetchPeriods = async () => {
-      const res = await getPeriods();
-      if (res.success && res.data.length > 0) {
-        setPeriods(res.data);
-        setSelectedPeriodId(res.data[0].id);
+    const fetchPeriodsAndVersions = async () => {
+      const pRes = await getPeriods();
+      if (pRes.success && pRes.data.length > 0) {
+        setPeriods(pRes.data);
+        setSelectedPeriodId(pRes.data[0].id);
+      }
+      const vRes = await getKriteriaVersions();
+      if (vRes.success && vRes.data.length > 0) {
+        setBobotVersions(vRes.data);
+        const activeVer = vRes.data.find(v => v.is_active);
+        setSelectedBobotId(activeVer ? activeVer.id : vRes.data[0].id);
       }
     };
-    fetchPeriods();
-  }, [getPeriods]);
+    fetchPeriodsAndVersions();
+  }, [getPeriods, getKriteriaVersions]);
 
   const topRanking = useMemo(() => results.slice(0, 4), [results]);
 
@@ -46,11 +54,19 @@ const SimulasiPage = () => {
   }, [results, kuota, lastRunMs]);
 
   const handleRun = async () => {
+    if (!selectedPeriodId) {
+      setError("Silakan pilih periode terlebih dahulu.");
+      return;
+    }
     setError("");
     setIsRunning(true);
     const start = performance.now();
     const resolvedKuota = Math.max(Number.parseInt(kuota, 10) || 1, 1);
-    const result = await runSAW({ kuota: resolvedKuota });
+    const result = await runSAW({ 
+      kuota: resolvedKuota,
+      periodeId: selectedPeriodId,
+      bobotId: selectedBobotId
+    });
     const elapsed = performance.now() - start;
     setLastRunMs(elapsed);
     setIsRunning(false);
@@ -82,9 +98,16 @@ const SimulasiPage = () => {
             </div>
             <div>
               <p className="text-xs text-text-secondary">Versi Bobot</p>
-              <select className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-primary">
-                <option>v2.0 - Apr 2026</option>
-                <option>v1.9 - Jan 2026</option>
+              <select 
+                className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-primary"
+                value={selectedBobotId}
+                onChange={(e) => setSelectedBobotId(e.target.value)}
+              >
+                {bobotVersions.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.versi} {v.is_active ? "(Aktif)" : ""}{v.keterangan ? ` - ${v.keterangan}` : ""}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
