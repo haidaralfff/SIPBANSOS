@@ -536,6 +536,56 @@ export const useApi = () => {
     return { success: true, data: payload?.data || [] };
   }, [request]);
 
+  const getUsers = useCallback(async () => {
+    const response = await request("/api/v1/users", {
+      method: "GET"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memuat daftar pengguna." };
+    }
+    return { success: true, data: payload?.data || [] };
+  }, [request]);
+
+  const createUser = useCallback(async (data) => {
+    const response = await request("/api/v1/users", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal menambah pengguna baru." };
+    }
+    return { success: true, id: payload?.id };
+  }, [request]);
+
+  const updateUser = useCallback(async (id, data) => {
+    const response = await request(`/api/v1/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memperbarui pengguna." };
+    }
+    return { success: true };
+  }, [request]);
+
+  const deleteUser = useCallback(async (id) => {
+    const response = await request(`/api/v1/users/${id}`, {
+      method: "DELETE"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal menghapus pengguna." };
+    }
+    return { success: true };
+  }, [request]);
+
   return {
     request,
     getWarga,
@@ -565,6 +615,10 @@ export const useApi = () => {
     exportData,
     exportReport,
     getRekap,
-    getAuditLogs
+    getAuditLogs,
+    getUsers,
+    createUser,
+    updateUser,
+    deleteUser
   };
 };

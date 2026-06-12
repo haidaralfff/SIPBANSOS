@@ -83,6 +83,14 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 				periodsGroup.PUT("/:id", h.UpdatePeriode)
 				periodsGroup.DELETE("/:id", h.DeletePeriode)
 			}
+
+			usersGroup := protected.Group("/users", middleware.RequireRoles("admin"))
+			{
+				usersGroup.GET("", h.ListUsers)
+				usersGroup.POST("", h.CreateUser)
+				usersGroup.PUT("/:id", h.UpdateUser)
+				usersGroup.DELETE("/:id", h.DeleteUser)
+			}
 		}
 	}
 }
