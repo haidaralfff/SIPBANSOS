@@ -414,6 +414,65 @@ export const useApi = () => {
     return { success: true, data: payload?.data };
   }, [request]);
 
+  const exportReport = useCallback(
+    async (periodId, type, status = "") => {
+      let url = `/api/v1/reports/export?type=${type}`;
+      if (periodId) {
+        url += `&periode_id=${encodeURIComponent(periodId)}`;
+      }
+      if (status) {
+        url += `&status=${encodeURIComponent(status)}`;
+      }
+
+      const response = await request(url, {
+        method: "GET"
+      });
+
+      if (!response.ok) {
+        const payload = await parseJson(response);
+        return {
+          success: false,
+          message: payload?.error || "Gagal mengunduh laporan."
+        };
+      }
+
+      const blob = await response.blob();
+      const fileName =
+        extractFilename(response.headers.get("Content-Disposition")) || `laporan_${type}.csv`;
+      triggerDownload(blob, fileName);
+      return { success: true };
+    },
+    [request]
+  );
+
+  const getRekap = useCallback(
+    async (periodId) => {
+      const url = `/api/v1/reports/rekap?periode_id=${encodeURIComponent(periodId)}`;
+      const response = await request(url, {
+        method: "GET"
+      });
+      const payload = await parseJson(response);
+
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal memuat rekap." };
+      }
+      return { success: true, data: payload?.data || [] };
+    },
+    [request]
+  );
+
+  const getAuditLogs = useCallback(async () => {
+    const response = await request("/api/v1/reports/audit", {
+      method: "GET"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memuat log audit." };
+    }
+    return { success: true, data: payload?.data || [] };
+  }, [request]);
+
   return {
     request,
     getWarga,
@@ -435,6 +494,9 @@ export const useApi = () => {
     getSummary,
     validateImport,
     confirmImport,
-    exportData
+    exportData,
+    exportReport,
+    getRekap,
+    getAuditLogs
   };
 };

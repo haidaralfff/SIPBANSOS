@@ -64,6 +64,9 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 				reportGroup.GET("/periods", h.ListPeriode)
 				reportGroup.GET("/ranking", h.ReportRanking)
 				reportGroup.GET("/summary", h.ReportSummary)
+				reportGroup.GET("/rekap", h.ReportRekap)
+				reportGroup.GET("/audit", h.ListAuditLogs)
+				reportGroup.GET("/export", h.ExportReport)
 			}
 
 			protected.POST("/saw/run", middleware.RequireRoles("admin", "kepala_desa"), h.RunSAW)

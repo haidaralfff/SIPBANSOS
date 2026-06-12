@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -243,6 +245,12 @@ func (h *Handler) CreateWarga(c *gin.Context) {
 		})
 	}
 
+	go func() {
+		if err := h.RecalculateSAWForActivePeriod(context.Background()); err != nil {
+			log.Printf("[SAW] Error recalculating on warga create: %v", err)
+		}
+	}()
+
 	c.JSON(http.StatusCreated, gin.H{"data": created})
 }
 
@@ -308,6 +316,12 @@ func (h *Handler) UpdateWarga(c *gin.Context) {
 		})
 	}
 
+	go func() {
+		if err := h.RecalculateSAWForActivePeriod(context.Background()); err != nil {
+			log.Printf("[SAW] Error recalculating on warga update: %v", err)
+		}
+	}()
+
 	c.JSON(http.StatusOK, gin.H{"data": updated})
 }
 
@@ -332,6 +346,12 @@ func (h *Handler) DeleteWarga(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete warga"})
 		return
 	}
+
+	go func() {
+		if err := h.RecalculateSAWForActivePeriod(context.Background()); err != nil {
+			log.Printf("[SAW] Error recalculating on warga delete: %v", err)
+		}
+	}()
 
 	c.JSON(http.StatusOK, gin.H{"deleted": true})
 }
@@ -588,4 +608,83 @@ func (h *Handler) UploadFile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"url": urlPath,
 	})
+}
+
+// Background auto calculation helper
+func (h *Handler) RecalculateSAWForActivePeriod(ctx context.Context) error {
+	var periodID string
+	var periodKuota int
+	var bobotID string
+	err := h.db.QueryRow(ctx, "SELECT id, kuota, bobot_id FROM periode_bansos WHERE status = 'aktif' LIMIT 1").Scan(&periodID, &periodKuota, &bobotID)
+	if err != nil {
+		// If no active period is set, bypass calculation
+		return nil
+	}
+
+	if bobotID == "" {
+		return errors.New("active period is missing bobot_id configuration")
+	}
+
+	var b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13 float64
+	err = h.db.QueryRow(ctx, `
+		SELECT bobot_c1, bobot_c2, bobot_c3, bobot_c4, bobot_c5, bobot_c6, bobot_c7, bobot_c8, bobot_c9, bobot_c10, bobot_c11, bobot_c12, bobot_c13
+		FROM bobot_kriteria WHERE id = $1
+	`, bobotID).Scan(&b1, &b2, &b3, &b4, &b5, &b6, &b7, &b8, &b9, &b10, &b11, &b12, &b13)
+	if err != nil {
+		return err
+	}
+	bobot := [13]float64{b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13}
+
+	rows, err := h.db.Query(ctx, `
+		SELECT id, nama_lengkap, c1_value, c2_value, c3_value, c4_value, c5_value, c6_value, c7_value, c8_value, c9_value, c10_value, c11_value, c12_value, c13_value
+		FROM warga
+		WHERE deleted_at IS NULL AND is_active = true AND foto_ktp_url IS NOT NULL AND foto_ktp_url <> '' AND foto_kk_url IS NOT NULL AND foto_kk_url <> ''
+	`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var alternatifs []saw.Alternatif
+	for rows.Next() {
+		var a saw.Alternatif
+		var c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13 float64
+		err := rows.Scan(&a.ID, &a.Nama, &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10, &c11, &c12, &c13)
+		if err != nil {
+			return err
+		}
+		a.Nilai = [13]float64{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13}
+		alternatifs = append(alternatifs, a)
+	}
+
+	if len(alternatifs) == 0 {
+		// Clear old results if there are no citizens
+		_, err = h.db.Exec(ctx, "DELETE FROM hasil_saw WHERE periode_id = $1", periodID)
+		return err
+	}
+
+	hasil := saw.HitungSAW(alternatifs, bobot, periodKuota)
+
+	tx, err := h.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, "DELETE FROM hasil_saw WHERE periode_id = $1", periodID)
+	if err != nil {
+		return err
+	}
+
+	for _, res := range hasil {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO hasil_saw (periode_id, warga_id, nilai_vi, ranking, status)
+			VALUES ($1, $2, $3, $4, $5)
+		`, periodID, res.AlternatifID, res.Vi, res.Ranking, res.Status)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }
