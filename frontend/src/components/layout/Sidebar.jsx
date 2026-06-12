@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { canAccess } from "../../utils/roleGuard";
 import ProgressBar from "../ui/ProgressBar";
+import { useApi } from "../../hooks/useApi";
 
 const OverviewIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -124,8 +126,67 @@ const NavItem = ({ item }) => {
 
 const Sidebar = () => {
   const { user } = useAuth();
+  const { getPeriods, getSummary } = useApi();
   const role = user?.role;
   const visibleItems = NAV_ITEMS.filter((item) => canAccess(role, item.roles));
+
+  const [activePeriod, setActivePeriod] = useState(null);
+  const [summary, setSummary] = useState({ total: 0, penerima: 0, cadangan: 0, tidak_lolos: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchActivePeriodAndSummary = async () => {
+      setIsLoading(true);
+      const res = await getPeriods();
+      if (res.success && res.data) {
+        const active = res.data.find(p => p.status === "aktif");
+        if (active) {
+          setActivePeriod(active);
+          const sumRes = await getSummary(active.id);
+          if (sumRes.success && sumRes.data) {
+            setSummary(sumRes.data);
+          }
+        }
+      }
+      setIsLoading(false);
+    };
+    fetchActivePeriodAndSummary();
+  }, [getPeriods, getSummary]);
+
+  const renderQuotaWidget = () => {
+    if (isLoading) {
+      return (
+        <div className="rounded-card bg-background/70 p-4 text-center text-xs text-text-secondary">
+          Memuat kuota...
+        </div>
+      );
+    }
+
+    if (!activePeriod) {
+      return (
+        <div className="rounded-card bg-background/70 p-4 text-center text-xs text-text-secondary">
+          Tidak ada periode aktif.
+        </div>
+      );
+    }
+
+    const penerima = summary?.penerima || 0;
+    const kuota = activePeriod.kuota || 0;
+    const persentase = kuota > 0 ? Math.round((penerima / kuota) * 100) : 0;
+    const sisa = Math.max(0, kuota - penerima);
+
+    return (
+      <div className="rounded-card bg-background/70 p-4">
+        <p className="text-sm font-semibold text-text-primary">Kuota {activePeriod.nama_periode}</p>
+        <p className="mt-1 text-xs text-text-secondary">Terpenuhi {penerima} dari {kuota} KK</p>
+        <ProgressBar value={persentase} className="mt-3" />
+        <div className="mt-3 flex items-center justify-between text-xs text-text-secondary">
+          <span>{persentase}% terpenuhi</span>
+          <span>{sisa} sisa</span>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <aside className="rounded-card border border-border/60 bg-surface p-4 shadow-sidebar lg:p-5">
@@ -145,15 +206,7 @@ const Sidebar = () => {
         </nav>
       </div>
       <div className="mt-6 hidden lg:block">
-        <div className="rounded-card bg-background/70 p-4">
-          <p className="text-sm font-semibold text-text-primary">Kuota BLT Q2 2026</p>
-          <p className="mt-1 text-xs text-text-secondary">Terpenuhi 120 dari 150 KK</p>
-          <ProgressBar value={80} className="mt-3" />
-          <div className="mt-3 flex items-center justify-between text-xs text-text-secondary">
-            <span>80% terpenuhi</span>
-            <span>30 sisa</span>
-          </div>
-        </div>
+        {renderQuotaWidget()}
       </div>
     </aside>
   );
