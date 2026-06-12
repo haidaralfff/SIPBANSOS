@@ -12,6 +12,66 @@ const PAGE_SIZE = 10;
 const STATUS_OPTIONS = ["Semua", "Aktif", "Nonaktif"];
 const VERIFICATION_OPTIONS = ["Semua", "Terverifikasi", "Menunggu", "Perlu Revisi"];
 
+const C3_OPTIONS = [
+  { value: 1, label: "Skor 1 - Tidak Sekolah / SD" },
+  { value: 2, label: "Skor 2 - SMP" },
+  { value: 3, label: "Skor 3 - SMA" },
+  { value: 4, label: "Skor 4 - Diploma (D1-D4)" },
+  { value: 5, label: "Skor 5 - Sarjana (S1-S3)" }
+];
+
+const C4_OPTIONS = [
+  { value: 1, label: "Skor 1 - Tidak Bekerja / Pengangguran" },
+  { value: 2, label: "Skor 2 - Buruh Harian Lepas / Serabutan" },
+  { value: 3, label: "Skor 3 - Petani / Nelayan" },
+  { value: 4, label: "Skor 4 - Karyawan Swasta / Pedagang" },
+  { value: 5, label: "Skor 5 - PNS / TNI / POLRI / BUMN" }
+];
+
+const C5_OPTIONS = [
+  { value: 1, label: "Skor 1 - Milik Sendiri" },
+  { value: 2, label: "Skor 2 - Sewa / Kontrak" },
+  { value: 3, label: "Skor 3 - Numpang / Rumah Dinas" }
+];
+
+const C7_OPTIONS = [
+  { value: 450, label: "450 VA" },
+  { value: 900, label: "900 VA" },
+  { value: 1300, label: "1300 VA" },
+  { value: 2200, label: "2200 VA" },
+  { value: 3500, label: "3500 VA" },
+  { value: 4400, label: "4400 VA ke atas" }
+];
+
+const C12_OPTIONS = [
+  { value: 1, label: "Skor 1 - Bambu / Kayu Darurat" },
+  { value: 2, label: "Skor 2 - Semi Permanen / Papan" },
+  { value: 3, label: "Skor 3 - Tembok Tanpa Plester / Batako" },
+  { value: 4, label: "Skor 4 - Tembok Plester / Permanen" }
+];
+
+const C13_OPTIONS = [
+  { value: 1, label: "Skor 1 - Air Sungai / Hujan / Sumur Terbuka" },
+  { value: 2, label: "Skor 2 - Sumur Gali / Pompa Bersama" },
+  { value: 3, label: "Skor 3 - PDAM / Sumur Bor Pribadi" }
+];
+
+const criteriaFieldsConfig = [
+  { field: "c1_value", label: "C1 - Jumlah Anggota Keluarga", type: "number", suffix: "orang" },
+  { field: "c2_value", label: "C2 - Jumlah Tanggungan", type: "number", suffix: "orang" },
+  { field: "c3_value", label: "C3 - Pendidikan Kep. Keluarga", type: "select", options: C3_OPTIONS },
+  { field: "c4_value", label: "C4 - Pekerjaan Kep. Keluarga", type: "select", options: C4_OPTIONS },
+  { field: "c5_value", label: "C5 - Status Rumah", type: "select", options: C5_OPTIONS },
+  { field: "c6_value", label: "C6 - Luas Rumah", type: "number", suffix: "m²" },
+  { field: "c7_value", label: "C7 - Daya Listrik", type: "select", options: C7_OPTIONS },
+  { field: "c8_value", label: "C8 - Jumlah Kendaraan", type: "number", suffix: "unit" },
+  { field: "c9_value", label: "C9 - Tabungan", type: "number", prefix: "Rp" },
+  { field: "c10_value", label: "C10 - Penghasilan per Bulan", type: "number", prefix: "Rp" },
+  { field: "c11_value", label: "C11 - Pengeluaran per Bulan", type: "number", prefix: "Rp" },
+  { field: "c12_value", label: "C12 - Kondisi Dinding", type: "select", options: C12_OPTIONS },
+  { field: "c13_value", label: "C13 - Akses Air", type: "select", options: C13_OPTIONS }
+];
+
 const statusVariant = (status) => (status === "Aktif" ? "success" : "danger");
 
 const verificationVariant = (status) => {
@@ -34,6 +94,13 @@ const formatDate = (value) => {
     month: "short",
     year: "numeric"
   }).format(date);
+};
+
+const getOriginalFilename = (url) => {
+  if (!url) return "";
+  const parts = url.split("/");
+  const filename = parts[parts.length - 1];
+  return filename.replace(/^\d+_\d*_?/, "").replace(/^\d+_?/, "");
 };
 
 const buildCriteria = (item) => [
@@ -97,7 +164,7 @@ const buildFormDataFromWarga = (item) => ({
   nama_lengkap: item.name || "",
   nik: item.nik || "",
   no_kk: item.noKk || "",
-  tanggal_lahir: item.tanggalLahir || "",
+  tanggal_lahir: item.tanggalLahir ? item.tanggalLahir.split("T")[0] : "",
   jenis_kelamin: item.jenisKelaminRaw || "L",
   alamat: item.address || "",
   rt: item.rt || "",
@@ -221,7 +288,7 @@ const mapWargaResponse = (item) => {
 };
 
 const DataWargaPage = () => {
-  const { getWarga, createWarga, updateWarga, getWargaHistory } = useApi();
+  const { getWarga, createWarga, updateWarga, uploadFile, getWargaHistory } = useApi();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Semua");
@@ -331,7 +398,6 @@ const DataWargaPage = () => {
   const closeDrawer = () => {
     setSelectedWarga(null);
     setShowForm(false);
-    setShowVerify(false);
     setShowHistory(false);
   };
 
@@ -350,19 +416,7 @@ const DataWargaPage = () => {
     setShowForm(true);
   };
 
-  const openVerifyForm = () => {
-    if (!selectedWarga) return;
-    setVerifyKtp(Boolean(selectedWarga.foto_ktp_url));
-    setVerifyKk(Boolean(selectedWarga.foto_kk_url));
-    setVerifyError("");
-    setShowVerify(true);
-  };
-
   const closeForm = () => setShowForm(false);
-  const closeVerify = () => {
-    setShowVerify(false);
-    setVerifyError("");
-  };
   const closeHistory = () => setShowHistory(false);
 
   const [showForm, setShowForm] = useState(false);
@@ -371,11 +425,50 @@ const DataWargaPage = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const [showVerify, setShowVerify] = useState(false);
-  const [verifyKtp, setVerifyKtp] = useState(false);
-  const [verifyKk, setVerifyKk] = useState(false);
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyError, setVerifyError] = useState("");
+  const [isUploadingKtp, setIsUploadingKtp] = useState(false);
+  const [uploadKtpError, setUploadKtpError] = useState("");
+
+  const handleKtpUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploadingKtp(true);
+    setUploadKtpError("");
+    try {
+      const result = await uploadFile(file);
+      if (result && !result.success) {
+        throw new Error(result.message);
+      }
+      setFormData((prev) => ({ ...prev, foto_ktp_url: result.url }));
+    } catch (err) {
+      setUploadKtpError(err.message || "Gagal mengunggah foto KTP.");
+    } finally {
+      setIsUploadingKtp(false);
+    }
+  };
+
+  const [isUploadingKk, setIsUploadingKk] = useState(false);
+  const [uploadKkError, setUploadKkError] = useState("");
+  const [previewImage, setPreviewImage] = useState(null);
+
+  const handleKkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploadingKk(true);
+    setUploadKkError("");
+    try {
+      const result = await uploadFile(file);
+      if (result && !result.success) {
+        throw new Error(result.message);
+      }
+      setFormData((prev) => ({ ...prev, foto_kk_url: result.url }));
+    } catch (err) {
+      setUploadKkError(err.message || "Gagal mengunggah foto KK.");
+    } finally {
+      setIsUploadingKk(false);
+    }
+  };
 
   const [showHistory, setShowHistory] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -430,14 +523,22 @@ const DataWargaPage = () => {
     try {
       const payload = buildWargaPayload(formData);
 
+      let result;
       if (isEditing && selectedWarga) {
-        await updateWarga(selectedWarga.id, payload);
+        result = await updateWarga(selectedWarga.id, payload);
       } else {
-        await createWarga(payload);
+        result = await createWarga(payload);
+      }
+
+      if (result && !result.success) {
+        throw new Error(result.message);
       }
 
       setShowForm(false);
       await refreshWargaList();
+      if (isEditing && selectedWarga && result && result.data) {
+        setSelectedWarga(mapWargaResponse(result.data));
+      }
     } catch (err) {
       setFormError(err.message || "Gagal menyimpan data.");
     } finally {
@@ -445,23 +546,7 @@ const DataWargaPage = () => {
     }
   };
 
-  const handleSubmitVerify = async () => {
-    if (!selectedWarga) return;
-    setVerifyLoading(true);
-    setVerifyError("");
-    try {
-      const payload = buildWargaPayload(buildFormDataFromWarga(selectedWarga));
-      payload.foto_ktp_url = verifyKtp ? (selectedWarga.foto_ktp_url || "manual://verified") : "";
-      payload.foto_kk_url = verifyKk ? (selectedWarga.foto_kk_url || "manual://verified") : "";
-      await updateWarga(selectedWarga.id, payload);
-      setShowVerify(false);
-      await refreshWargaList();
-    } catch (err) {
-      setVerifyError(err.message || "Gagal menyimpan verifikasi.");
-    } finally {
-      setVerifyLoading(false);
-    }
-  };
+
 
   return (
     <AppShell
@@ -721,26 +806,61 @@ const DataWargaPage = () => {
             </div>
 
             <div>
-              <h3 className="text-sm font-bold">Dokumen</h3>
+              <h3 className="text-sm font-bold">Dokumen (Klik untuk Lihat)</h3>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-card bg-background/70 p-3">
-                  <p className="text-xs text-text-secondary">KTP</p>
-                  <Badge variant={selectedWarga.documents.ktp === "Lengkap" ? "success" : "warning"}>
-                    {selectedWarga.documents.ktp}
-                  </Badge>
+                <div
+                  className={`rounded-card bg-background/70 p-3 transition-all ${
+                    selectedWarga.foto_ktp_url
+                      ? "cursor-pointer hover:bg-background/95 hover:shadow-sm border border-transparent hover:border-border/80"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    if (selectedWarga.foto_ktp_url) {
+                      setPreviewImage(selectedWarga.foto_ktp_url);
+                    }
+                  }}
+                >
+                  <p className="text-xs text-text-secondary flex justify-between items-center">
+                    <span>KTP</span>
+                    {selectedWarga.foto_ktp_url ? (
+                      <span className="text-[10px] text-primary-orange font-semibold hover:underline">Lihat</span>
+                    ) : null}
+                  </p>
+                  <div className="mt-1">
+                    <Badge variant={selectedWarga.documents.ktp === "Lengkap" ? "success" : "warning"}>
+                      {selectedWarga.documents.ktp}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="rounded-card bg-background/70 p-3">
-                  <p className="text-xs text-text-secondary">KK</p>
-                  <Badge variant={selectedWarga.documents.kk === "Lengkap" ? "success" : "warning"}>
-                    {selectedWarga.documents.kk}
-                  </Badge>
+                <div
+                  className={`rounded-card bg-background/70 p-3 transition-all ${
+                    selectedWarga.foto_kk_url
+                      ? "cursor-pointer hover:bg-background/95 hover:shadow-sm border border-transparent hover:border-border/80"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    if (selectedWarga.foto_kk_url) {
+                      setPreviewImage(selectedWarga.foto_kk_url);
+                    }
+                  }}
+                >
+                  <p className="text-xs text-text-secondary flex justify-between items-center">
+                    <span>KK</span>
+                    {selectedWarga.foto_kk_url ? (
+                      <span className="text-[10px] text-primary-orange font-semibold hover:underline">Lihat</span>
+                    ) : null}
+                  </p>
+                  <div className="mt-1">
+                    <Badge variant={selectedWarga.documents.kk === "Lengkap" ? "success" : "warning"}>
+                      {selectedWarga.documents.kk}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Button onClick={openEditForm}>Ubah Data</Button>
-              <Button variant="outline" onClick={openVerifyForm}>Catat Verifikasi</Button>
               <Button variant="outline" onClick={() => setShowHistory(true)}>Lihat Riwayat</Button>
             </div>
           </div>
@@ -766,21 +886,167 @@ const DataWargaPage = () => {
             <input className="rounded-button border border-border px-3 py-2 sm:col-span-2" placeholder="Alamat" value={formData.alamat} onChange={(e) => setFormData({ ...formData, alamat: e.target.value })} />
             <input className="rounded-button border border-border px-3 py-2" placeholder="RT" value={formData.rt} onChange={(e) => setFormData({ ...formData, rt: e.target.value })} />
             <input className="rounded-button border border-border px-3 py-2" placeholder="RW" value={formData.rw} onChange={(e) => setFormData({ ...formData, rw: e.target.value })} />
-            <input className="rounded-button border border-border px-3 py-2 sm:col-span-2" placeholder="URL Foto KTP" value={formData.foto_ktp_url} onChange={(e) => setFormData({ ...formData, foto_ktp_url: e.target.value })} />
-            <input className="rounded-button border border-border px-3 py-2 sm:col-span-2" placeholder="URL Foto KK" value={formData.foto_kk_url} onChange={(e) => setFormData({ ...formData, foto_kk_url: e.target.value })} />
+            <div className="sm:col-span-2 flex flex-col gap-1">
+              <label className="text-xs font-semibold text-text-secondary">Foto KTP</label>
+              {formData.foto_ktp_url ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                      Foto KTP terunggah
+                    </span>
+                    <button
+                      type="button"
+                      className="text-xs text-accent-red underline hover:text-accent-red/80 font-medium"
+                      onClick={() => setFormData({ ...formData, foto_ktp_url: "" })}
+                    >
+                      Hapus & Upload Ulang
+                    </button>
+                  </div>
+                  <input
+                    className="rounded-button border border-border px-3 py-2 bg-background/40 text-sm text-text-secondary w-full select-all font-mono text-xs cursor-not-allowed"
+                    value={getOriginalFilename(formData.foto_ktp_url)}
+                    disabled
+                    readOnly
+                  />
+                </div>
+              ) : (
+                <div className="w-full">
+                  <label
+                    htmlFor="upload-ktp"
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-border hover:border-primary-orange rounded-card p-4 cursor-pointer text-sm text-text-secondary transition-colors bg-white hover:bg-background/20"
+                  >
+                    {isUploadingKtp ? (
+                      <span className="text-primary-orange animate-pulse font-medium">Mengunggah...</span>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="font-semibold text-primary-orange">Klik untuk Upload</span>
+                        <span className="text-xs text-text-secondary/70">JPG, PNG, WEBP (Maks 5MB)</span>
+                      </div>
+                    )}
+                  </label>
+                  <input
+                    id="upload-ktp"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={isUploadingKtp}
+                    onChange={handleKtpUpload}
+                  />
+                </div>
+              )}
+              {uploadKtpError ? (
+                <span className="text-xs text-accent-red font-medium">{uploadKtpError}</span>
+              ) : null}
+            </div>
+            <div className="sm:col-span-2 flex flex-col gap-1">
+              <label className="text-xs font-semibold text-text-secondary">Foto KK</label>
+              {formData.foto_kk_url ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                      Foto KK terunggah
+                    </span>
+                    <button
+                      type="button"
+                      className="text-xs text-accent-red underline hover:text-accent-red/80 font-medium"
+                      onClick={() => setFormData({ ...formData, foto_kk_url: "" })}
+                    >
+                      Hapus & Upload Ulang
+                    </button>
+                  </div>
+                  <input
+                    className="rounded-button border border-border px-3 py-2 bg-background/40 text-sm text-text-secondary w-full select-all font-mono text-xs cursor-not-allowed"
+                    value={getOriginalFilename(formData.foto_kk_url)}
+                    disabled
+                    readOnly
+                  />
+                </div>
+              ) : (
+                <div className="w-full">
+                  <label
+                    htmlFor="upload-kk"
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-border hover:border-primary-orange rounded-card p-4 cursor-pointer text-sm text-text-secondary transition-colors bg-white hover:bg-background/20"
+                  >
+                    {isUploadingKk ? (
+                      <span className="text-primary-orange animate-pulse font-medium">Mengunggah...</span>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="font-semibold text-primary-orange">Klik untuk Upload</span>
+                        <span className="text-xs text-text-secondary/70">JPG, PNG, WEBP (Maks 5MB)</span>
+                      </div>
+                    )}
+                  </label>
+                  <input
+                    id="upload-kk"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={isUploadingKk}
+                    onChange={handleKkUpload}
+                  />
+                </div>
+              )}
+              {uploadKkError ? (
+                <span className="text-xs text-accent-red font-medium">{uploadKkError}</span>
+              ) : null}
+            </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[["c1_value", "C1 - Jumlah Anggota Keluarga"], ["c2_value", "C2 - Jumlah Tanggungan"], ["c3_value", "C3 - Pendidikan"], ["c4_value", "C4 - Pekerjaan"], ["c5_value", "C5 - Status Rumah"], ["c6_value", "C6 - Luas Rumah"], ["c7_value", "C7 - Daya Listrik"], ["c8_value", "C8 - Kendaraan"], ["c9_value", "C9 - Tabungan"], ["c10_value", "C10 - Penghasilan"], ["c11_value", "C11 - Pengeluaran"], ["c12_value", "C12 - Kondisi Dinding"], ["c13_value", "C13 - Akses Air"]].map(([field, label]) => (
-              <input
-                key={field}
-                className="rounded-button border border-border px-3 py-2"
-                type="number"
-                step="any"
-                placeholder={label}
-                value={formData[field]}
-                onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
-              />
-            ))}
+
+          <div className="border-t border-border/60 my-4 pt-4">
+            <h4 className="text-sm font-bold text-text-primary mb-3">Kriteria Penilaian SAW</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {criteriaFieldsConfig.map((cfg) => {
+                if (cfg.type === "select") {
+                  return (
+                    <div key={cfg.field} className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-text-secondary">{cfg.label}</label>
+                      <select
+                        className="rounded-button border border-border px-3 py-2 text-sm bg-white text-text-primary"
+                        value={formData[cfg.field]}
+                        onChange={(e) => setFormData({ ...formData, [cfg.field]: e.target.value })}
+                      >
+                        <option value="">-- Pilih {cfg.label.split(" - ")[1]} --</option>
+                        {cfg.options.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div key={cfg.field} className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-text-secondary">{cfg.label}</label>
+                      <div className="relative flex items-center">
+                        {cfg.prefix ? (
+                          <span className="absolute left-3 text-sm text-text-secondary font-medium select-none pointer-events-none">
+                            {cfg.prefix}
+                          </span>
+                        ) : null}
+                        <input
+                          type="number"
+                          step="any"
+                          placeholder="0"
+                          className={`rounded-button border border-border py-2 text-sm text-text-primary w-full ${
+                            cfg.prefix ? "pl-9" : "pl-3"
+                          } ${cfg.suffix ? "pr-14" : "pr-3"}`}
+                          value={formData[cfg.field]}
+                          onChange={(e) => setFormData({ ...formData, [cfg.field]: e.target.value })}
+                        />
+                        {cfg.suffix ? (
+                          <span className="absolute right-3 text-sm text-text-secondary font-medium select-none pointer-events-none">
+                            {cfg.suffix}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                }
+              })}
+            </div>
           </div>
           <div className="flex gap-2">
             <Button onClick={handleSubmitForm} disabled={formLoading}>{formLoading ? (isEditing ? "Menyimpan..." : "Membuat...") : (isEditing ? "Simpan" : "Buat")}</Button>
@@ -789,24 +1055,7 @@ const DataWargaPage = () => {
         </div>
       </Drawer>
 
-      <Drawer
-        open={showVerify}
-        onClose={closeVerify}
-        title="Catat Verifikasi"
-      >
-        {selectedWarga ? (
-          <div className="space-y-4">
-            {verifyError ? <div className="rounded-card bg-accent-red/10 px-3 py-2 text-xs text-accent-red">{verifyError}</div> : null}
-            <p className="text-sm text-text-secondary">Tandai dokumen yang sudah lengkap untuk {selectedWarga.name}.</p>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={verifyKtp} onChange={(e) => setVerifyKtp(e.target.checked)} /> KTP lengkap</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={verifyKk} onChange={(e) => setVerifyKk(e.target.checked)} /> KK lengkap</label>
-            <div className="flex gap-2">
-              <Button onClick={handleSubmitVerify} disabled={verifyLoading}>{verifyLoading ? "Menyimpan..." : "Simpan"}</Button>
-              <Button variant="outline" onClick={closeVerify}>Batal</Button>
-            </div>
-          </div>
-        ) : null}
-      </Drawer>
+
 
       <Drawer
         open={showHistory}
@@ -851,6 +1100,28 @@ const DataWargaPage = () => {
           </div>
         </div>
       </Drawer>
+
+      {previewImage ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-full max-h-full">
+            <button
+              className="absolute top-4 right-4 text-white bg-black/60 hover:bg-black/80 rounded-full w-10 h-10 flex items-center justify-center text-xl font-bold transition-colors"
+              onClick={() => setPreviewImage(null)}
+            >
+              ✕
+            </button>
+            <img
+              src={previewImage}
+              alt="Preview Dokumen"
+              className="max-w-full max-h-[85vh] rounded-card object-contain shadow-2xl animate-scale-up"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      ) : null}
     </AppShell>
   );
 };

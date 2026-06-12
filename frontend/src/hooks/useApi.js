@@ -311,6 +311,28 @@ export const useApi = () => {
     return { success: true, data: payload?.data };
   }, [request]);
 
+  const uploadFile = useCallback(
+    async (file) => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await request("/api/v1/upload", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      const payload = await parseJson(response);
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal mengunggah file." };
+      }
+      return { success: true, url: payload?.url };
+    },
+    [request]
+  );
+
   const deleteWarga = useCallback(async (id) => {
     const response = await request(`/api/v1/warga/${id}`, {
       method: "DELETE"
@@ -368,6 +390,7 @@ export const useApi = () => {
     getWargaHistory,
     createWarga,
     updateWarga,
+    uploadFile,
     deleteWarga,
     downloadImportTemplate,
     runSAW,
