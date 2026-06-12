@@ -376,6 +376,69 @@ export const useApi = () => {
     return { success: true, data: payload?.data || [] };
   }, [request]);
 
+  const getSettings = useCallback(async () => {
+    const response = await request("/api/v1/settings", {
+      method: "GET"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memuat pengaturan." };
+    }
+    return { success: true, data: payload };
+  }, [request]);
+
+  const updateSettings = useCallback(async (data) => {
+    const response = await request("/api/v1/settings", {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal menyimpan pengaturan." };
+    }
+    return { success: true, message: payload?.message };
+  }, [request]);
+
+  const createPeriod = useCallback(async (data) => {
+    const response = await request("/api/v1/periods", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal membuat periode." };
+    }
+    return { success: true, id: payload?.id };
+  }, [request]);
+
+  const updatePeriod = useCallback(async (id, data) => {
+    const response = await request(`/api/v1/periods/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal mengubah periode." };
+    }
+    return { success: true };
+  }, [request]);
+
+  const deletePeriod = useCallback(async (id) => {
+    const response = await request(`/api/v1/periods/${id}`, {
+      method: "DELETE"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal menghapus periode." };
+    }
+    return { success: true };
+  }, [request]);
+
   const getKriteriaVersions = useCallback(async () => {
     const response = await request("/api/v1/kriteria/versions", {
       method: "GET"
@@ -414,6 +477,115 @@ export const useApi = () => {
     return { success: true, data: payload?.data };
   }, [request]);
 
+  const exportReport = useCallback(
+    async (periodId, type, status = "") => {
+      let url = `/api/v1/reports/export?type=${type}`;
+      if (periodId) {
+        url += `&periode_id=${encodeURIComponent(periodId)}`;
+      }
+      if (status) {
+        url += `&status=${encodeURIComponent(status)}`;
+      }
+
+      const response = await request(url, {
+        method: "GET"
+      });
+
+      if (!response.ok) {
+        const payload = await parseJson(response);
+        return {
+          success: false,
+          message: payload?.error || "Gagal mengunduh laporan."
+        };
+      }
+
+      const blob = await response.blob();
+      const fileName =
+        extractFilename(response.headers.get("Content-Disposition")) || `laporan_${type}.csv`;
+      triggerDownload(blob, fileName);
+      return { success: true };
+    },
+    [request]
+  );
+
+  const getRekap = useCallback(
+    async (periodId) => {
+      const url = `/api/v1/reports/rekap?periode_id=${encodeURIComponent(periodId)}`;
+      const response = await request(url, {
+        method: "GET"
+      });
+      const payload = await parseJson(response);
+
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal memuat rekap." };
+      }
+      return { success: true, data: payload?.data || [] };
+    },
+    [request]
+  );
+
+  const getAuditLogs = useCallback(async () => {
+    const response = await request("/api/v1/reports/audit", {
+      method: "GET"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memuat log audit." };
+    }
+    return { success: true, data: payload?.data || [] };
+  }, [request]);
+
+  const getUsers = useCallback(async () => {
+    const response = await request("/api/v1/users", {
+      method: "GET"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memuat daftar pengguna." };
+    }
+    return { success: true, data: payload?.data || [] };
+  }, [request]);
+
+  const createUser = useCallback(async (data) => {
+    const response = await request("/api/v1/users", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal menambah pengguna baru." };
+    }
+    return { success: true, id: payload?.id };
+  }, [request]);
+
+  const updateUser = useCallback(async (id, data) => {
+    const response = await request(`/api/v1/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memperbarui pengguna." };
+    }
+    return { success: true };
+  }, [request]);
+
+  const deleteUser = useCallback(async (id) => {
+    const response = await request(`/api/v1/users/${id}`, {
+      method: "DELETE"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal menghapus pengguna." };
+    }
+    return { success: true };
+  }, [request]);
+
   return {
     request,
     getWarga,
@@ -430,11 +602,23 @@ export const useApi = () => {
     createKriteria,
     updateKriteria,
     getPeriods,
+    getSettings,
+    updateSettings,
+    createPeriod,
+    updatePeriod,
+    deletePeriod,
     getKriteriaVersions,
     getRanking,
     getSummary,
     validateImport,
     confirmImport,
-    exportData
+    exportData,
+    exportReport,
+    getRekap,
+    getAuditLogs,
+    getUsers,
+    createUser,
+    updateUser,
+    deleteUser
   };
 };

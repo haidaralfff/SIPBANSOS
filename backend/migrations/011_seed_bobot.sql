@@ -15,7 +15,8 @@ INSERT INTO bobot_kriteria (
     bobot_c12,
     bobot_c13,
     is_active
-) VALUES (
+)
+SELECT 
     'v1.0',
     'Bobot Default SIPBANSOS (13 Kriteria)',
     0.08,
@@ -32,4 +33,7 @@ INSERT INTO bobot_kriteria (
     0.06,
     0.06,
     TRUE
+WHERE NOT EXISTS (
+    SELECT 1 FROM bobot_kriteria WHERE versi = 'v1.0'
 );
+

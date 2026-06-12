@@ -64,9 +64,33 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 				reportGroup.GET("/periods", h.ListPeriode)
 				reportGroup.GET("/ranking", h.ReportRanking)
 				reportGroup.GET("/summary", h.ReportSummary)
+				reportGroup.GET("/rekap", h.ReportRekap)
+				reportGroup.GET("/audit", h.ListAuditLogs)
+				reportGroup.GET("/export", h.ExportReport)
 			}
 
 			protected.POST("/saw/run", middleware.RequireRoles("admin", "kepala_desa"), h.RunSAW)
+
+			settingsGroup := protected.Group("/settings")
+			{
+				settingsGroup.GET("", h.GetSettings)
+				settingsGroup.PUT("", middleware.RequireRoles("admin"), h.UpdateSettings)
+			}
+
+			periodsGroup := protected.Group("/periods", middleware.RequireRoles("admin"))
+			{
+				periodsGroup.POST("", h.CreatePeriode)
+				periodsGroup.PUT("/:id", h.UpdatePeriode)
+				periodsGroup.DELETE("/:id", h.DeletePeriode)
+			}
+
+			usersGroup := protected.Group("/users", middleware.RequireRoles("admin"))
+			{
+				usersGroup.GET("", h.ListUsers)
+				usersGroup.POST("", h.CreateUser)
+				usersGroup.PUT("/:id", h.UpdateUser)
+				usersGroup.DELETE("/:id", h.DeleteUser)
+			}
 		}
 	}
 }

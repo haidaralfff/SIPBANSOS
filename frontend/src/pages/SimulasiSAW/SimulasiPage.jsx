@@ -40,7 +40,12 @@ const SimulasiPage = () => {
     fetchPeriodsAndVersions();
   }, [getPeriods, getKriteriaVersions]);
 
-  const topRanking = useMemo(() => results.slice(0, 4), [results]);
+  const [showAll, setShowAll] = useState(false);
+
+  const displayedResults = useMemo(() => {
+    if (showAll) return results;
+    return results.slice(0, 10);
+  }, [results, showAll]);
 
   const metrics = useMemo(() => {
     const totalAlternatif = results.length;
@@ -80,7 +85,7 @@ const SimulasiPage = () => {
   };
 
   return (
-    <AppShell title="Simulasi SAW" subtitle="Jalankan perhitungan SAW dan analisis hasil ranking." showRightPanel={false}>
+    <AppShell title="Perhitungan SAW" subtitle="Jalankan perhitungan SAW dan analisis hasil ranking." showRightPanel={false}>
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -143,9 +148,15 @@ const SimulasiPage = () => {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold">Hasil Ranking</h3>
-            <p className="text-xs text-text-secondary">Preview 4 teratas setelah normalisasi.</p>
+            <p className="text-xs text-text-secondary">
+              {showAll ? "Menampilkan seluruh hasil perhitungan setelah normalisasi." : "Preview 10 teratas setelah normalisasi."}
+            </p>
           </div>
-          <Button variant="outline">Lihat Semua</Button>
+          {results.length > 10 && (
+            <Button variant="outline" onClick={() => setShowAll(prev => !prev)}>
+              {showAll ? "Tampilkan Lebih Sedikit" : "Lihat Semua"}
+            </Button>
+          )}
         </div>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -158,14 +169,14 @@ const SimulasiPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {topRanking.length === 0 ? (
+              {displayedResults.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-6 text-center text-sm text-text-secondary">
                     Belum ada hasil perhitungan.
                   </td>
                 </tr>
               ) : (
-                topRanking.map((item) => (
+                displayedResults.map((item) => (
                   <tr key={`${item.id}-${item.nama}`}>
                     <td className="py-3 font-semibold text-text-primary">{item.nama}</td>
                     <td className="py-3 text-text-secondary">{item.id}</td>

@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -208,6 +210,12 @@ func (h *Handler) ConfirmImport(c *gin.Context) {
 			successCount++
 		}
 	}
+
+	go func() {
+		if err := h.RecalculateSAWForActivePeriod(context.Background()); err != nil {
+			log.Printf("[SAW] Error recalculating on confirm import: %v", err)
+		}
+	}()
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Berhasil mengimpor %d data warga", successCount),

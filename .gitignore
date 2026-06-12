@@ -50,3 +50,5 @@ $RECYCLE.BIN/
 !.vscode/tasks.json
 
 project_brief.md
+
+ backend/uploads/*
