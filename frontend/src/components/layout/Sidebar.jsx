@@ -145,12 +145,27 @@ const Sidebar = () => {
           const sumRes = await getSummary(active.id);
           if (sumRes.success && sumRes.data) {
             setSummary(sumRes.data);
+          } else {
+            setSummary({ total: 0, penerima: 0, cadangan: 0, tidak_lolos: 0 });
           }
+        } else {
+          setActivePeriod(null);
+          setSummary({ total: 0, penerima: 0, cadangan: 0, tidak_lolos: 0 });
         }
       }
       setIsLoading(false);
     };
+
     fetchActivePeriodAndSummary();
+
+    const handleUpdate = () => {
+      fetchActivePeriodAndSummary();
+    };
+
+    window.addEventListener("calculation-updated", handleUpdate);
+    return () => {
+      window.removeEventListener("calculation-updated", handleUpdate);
+    };
   }, [getPeriods, getSummary]);
 
   const renderQuotaWidget = () => {

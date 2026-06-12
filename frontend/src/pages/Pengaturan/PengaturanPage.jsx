@@ -219,6 +219,7 @@ const PengaturanPage = () => {
         setIsDrawerOpen(false);
         const newPeriodsRes = await getPeriods();
         if (newPeriodsRes.success) setPeriods(newPeriodsRes.data);
+        window.dispatchEvent(new Event("calculation-updated"));
       } else {
         toast.error(res.message);
       }
@@ -229,6 +230,7 @@ const PengaturanPage = () => {
         setIsDrawerOpen(false);
         const newPeriodsRes = await getPeriods();
         if (newPeriodsRes.success) setPeriods(newPeriodsRes.data);
+        window.dispatchEvent(new Event("calculation-updated"));
       } else {
         toast.error(res.message);
       }
@@ -250,6 +252,7 @@ const PengaturanPage = () => {
       toast.success("Periode berhasil dihapus", { id: toastId });
       const newPeriodsRes = await getPeriods();
       if (newPeriodsRes.success) setPeriods(newPeriodsRes.data);
+      window.dispatchEvent(new Event("calculation-updated"));
     } else {
       toast.error(res.message || "Gagal menghapus periode", { id: toastId });
     }

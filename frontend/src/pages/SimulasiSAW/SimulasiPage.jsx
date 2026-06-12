@@ -82,6 +82,7 @@ const SimulasiPage = () => {
     }
 
     setResults(result.data);
+    window.dispatchEvent(new Event("calculation-updated"));
   };
 
   return (
