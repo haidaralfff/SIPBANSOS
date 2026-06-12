@@ -42,19 +42,19 @@ type kriteriaUpdateRequest struct {
 	Versi      string  `json:"versi"`
 	Keterangan *string `json:"keterangan"`
 	IsActive   *bool   `json:"is_active"`
-	BobotC1    float64 `json:"bobot_c1" binding:"required"`
-	BobotC2    float64 `json:"bobot_c2" binding:"required"`
-	BobotC3    float64 `json:"bobot_c3" binding:"required"`
-	BobotC4    float64 `json:"bobot_c4" binding:"required"`
-	BobotC5    float64 `json:"bobot_c5" binding:"required"`
-	BobotC6    float64 `json:"bobot_c6" binding:"required"`
-	BobotC7    float64 `json:"bobot_c7" binding:"required"`
-	BobotC8    float64 `json:"bobot_c8" binding:"required"`
-	BobotC9    float64 `json:"bobot_c9" binding:"required"`
-	BobotC10   float64 `json:"bobot_c10" binding:"required"`
-	BobotC11   float64 `json:"bobot_c11" binding:"required"`
-	BobotC12   float64 `json:"bobot_c12" binding:"required"`
-	BobotC13   float64 `json:"bobot_c13" binding:"required"`
+	BobotC1    float64 `json:"bobot_c1"`
+	BobotC2    float64 `json:"bobot_c2"`
+	BobotC3    float64 `json:"bobot_c3"`
+	BobotC4    float64 `json:"bobot_c4"`
+	BobotC5    float64 `json:"bobot_c5"`
+	BobotC6    float64 `json:"bobot_c6"`
+	BobotC7    float64 `json:"bobot_c7"`
+	BobotC8    float64 `json:"bobot_c8"`
+	BobotC9    float64 `json:"bobot_c9"`
+	BobotC10   float64 `json:"bobot_c10"`
+	BobotC11   float64 `json:"bobot_c11"`
+	BobotC12   float64 `json:"bobot_c12"`
+	BobotC13   float64 `json:"bobot_c13"`
 }
 
 var kriteriaDefinitions = []kriteriaDefinition{
@@ -291,4 +291,25 @@ func (h *Handler) ListKriteriaVersions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": list})
+}
+
+func (h *Handler) GetKriteriaByID(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing kriteria id"})
+		return
+	}
+
+	data, err := h.kriteria.GetByID(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, repository.ErrKriteriaNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "kriteria not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load kriteria: " + err.Error()})
+		return
+	}
+
+	response := buildKriteriaResponse(data)
+	c.JSON(http.StatusOK, response)
 }

@@ -26,6 +26,7 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 			kriteriaGroup := protected.Group("/kriteria", middleware.RequireRoles("admin"))
 			{
 				kriteriaGroup.GET("", h.ListKriteria)
+				kriteriaGroup.GET("/:id", h.GetKriteriaByID)
 				kriteriaGroup.POST("", h.CreateKriteria)
 				kriteriaGroup.PUT("/:id", h.UpdateKriteria)
 			}

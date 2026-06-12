@@ -261,6 +261,23 @@ export const useApi = () => {
     };
   }, [request]);
 
+  const getKriteriaById = useCallback(async (id) => {
+    const response = await request(`/api/v1/kriteria/${id}`, {
+      method: "GET"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memuat data kriteria." };
+    }
+    return { 
+      success: true, 
+      data: payload?.criteria || [],
+      version: payload?.version,
+      totalWeight: payload?.total_weight 
+    };
+  }, [request]);
+
   const createKriteria = useCallback(async (data) => {
     const response = await request("/api/v1/kriteria", {
       method: "POST",
@@ -409,6 +426,7 @@ export const useApi = () => {
     downloadImportTemplate,
     runSAW,
     getKriteria,
+    getKriteriaById,
     createKriteria,
     updateKriteria,
     getPeriods,
