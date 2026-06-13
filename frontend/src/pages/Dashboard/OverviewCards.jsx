@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import StatCard from "../../components/charts/StatCard";
+import Skeleton from "../../components/ui/Skeleton";
 import { useApi } from "../../hooks/useApi";
 
 const PeopleIcon = (
@@ -103,14 +104,29 @@ const OverviewCards = ({ periodId }) => {
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      {(cardsData.length > 0 ? cardsData : CARDS).map((card, index) => (
-        <StatCard
-          key={card.label}
-          {...card}
-          style={{ animationDelay: `${index * 120}ms`, opacity: isLoading ? 0.5 : 1 }}
-          className="animate-fade-up"
-        />
-      ))}
+      {isLoading ? (
+        [...Array(3)].map((_, index) => (
+          <div key={`skeleton-${index}`} className="rounded-card bg-background/70 p-4 border border-border">
+            <div className="flex items-start justify-between">
+              <div>
+                <Skeleton className="h-4 w-24 mb-3" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+              <Skeleton className="h-10 w-10 rounded-xl" />
+            </div>
+            <Skeleton className="h-4 w-16 mt-4" />
+          </div>
+        ))
+      ) : (
+        (cardsData.length > 0 ? cardsData : CARDS).map((card, index) => (
+          <StatCard
+            key={card.label}
+            {...card}
+            style={{ animationDelay: `${index * 120}ms` }}
+            className="animate-fade-up"
+          />
+        ))
+      )}
     </div>
   );
 };

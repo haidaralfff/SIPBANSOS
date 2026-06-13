@@ -5,6 +5,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Drawer from "../../components/ui/Drawer";
+import Skeleton from "../../components/ui/Skeleton";
 import { useApi } from "../../hooks/useApi";
 import { useAuth } from "../../context/AuthContext";
 
@@ -158,7 +159,7 @@ const PenggunaPage = () => {
               <p className="text-sm text-text-secondary">{role.label}</p>
               <div className="mt-3 flex items-center justify-between">
                 <p className="text-2xl font-bold text-text-primary">
-                  {isLoading ? "..." : role.value}
+                  {isLoading ? <Skeleton className="h-8 w-12" /> : role.value}
                 </p>
                 <Badge variant={role.variant}>Akun</Badge>
               </div>
@@ -193,11 +194,22 @@ const PenggunaPage = () => {
               </thead>
               <tbody className="divide-y divide-border/60">
                 {isLoading && users.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-6 text-center text-sm text-text-secondary">
-                      Memuat data pengguna...
-                    </td>
-                  </tr>
+                  [...Array(4)].map((_, i) => (
+                    <tr key={`skeleton-${i}`} className="hover:bg-transparent">
+                      <td className="py-3"><Skeleton className="h-5 w-32" /></td>
+                      <td className="py-3"><Skeleton className="h-5 w-24" /></td>
+                      <td className="py-3"><Skeleton className="h-5 w-40" /></td>
+                      <td className="py-3"><Skeleton className="h-5 w-24" /></td>
+                      <td className="py-3"><Skeleton className="h-6 w-16 rounded-full" /></td>
+                      <td className="py-3"><Skeleton className="h-5 w-24" /></td>
+                      <td className="py-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Skeleton className="h-7 w-7 rounded" />
+                          <Skeleton className="h-7 w-7 rounded" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 ) : users.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-6 text-center text-sm text-text-secondary">

@@ -5,6 +5,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Drawer from "../../components/ui/Drawer";
+import Skeleton from "../../components/ui/Skeleton";
 import { useApi } from "../../hooks/useApi";
 import { formatNumber, formatRupiah } from "../../utils/formatter";
 
@@ -667,11 +668,20 @@ const DataWargaPage = () => {
             </thead>
             <tbody className="divide-y divide-border/60">
               {isLoading ? (
-                <tr>
-                  <td colSpan={10} className="py-6 text-center text-sm text-text-secondary">
-                    Memuat data warga...
-                  </td>
-                </tr>
+                [...Array(5)].map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="hover:bg-transparent">
+                    <td className="py-3"><Skeleton className="h-5 w-32" /></td>
+                    <td className="py-3"><Skeleton className="h-5 w-32" /></td>
+                    <td className="py-3"><Skeleton className="h-5 w-32" /></td>
+                    <td className="py-3"><Skeleton className="h-5 w-16" /></td>
+                    <td className="py-3"><Skeleton className="h-5 w-24" /></td>
+                    <td className="py-3"><Skeleton className="h-5 w-16" /></td>
+                    <td className="py-3"><Skeleton className="h-6 w-20 rounded-full" /></td>
+                    <td className="py-3"><Skeleton className="h-6 w-24 rounded-full" /></td>
+                    <td className="py-3"><Skeleton className="h-5 w-24" /></td>
+                    <td className="py-3"><Skeleton className="h-8 w-16 rounded-button" /></td>
+                  </tr>
+                ))
               ) : filteredWarga.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="py-6 text-center text-sm text-text-secondary">

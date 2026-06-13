@@ -5,6 +5,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import ProgressBar from "../../components/ui/ProgressBar";
+import Skeleton from "../../components/ui/Skeleton";
 import { useApi } from "../../hooks/useApi";
 
 const IMPORT_LOG = [
@@ -217,8 +218,18 @@ const ImportEksporPage = () => {
               ) : null}
 
               {isValidating && (
-                <div className="mt-4 rounded-card bg-background/70 p-4 text-center text-sm text-text-secondary">
-                  Sedang memvalidasi file...
+                <div className="mt-4 rounded-card bg-background/70 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-2 w-full rounded-full" />
+                  <div className="mt-3 grid gap-2 lg:grid-cols-4">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
                 </div>
               )}
 

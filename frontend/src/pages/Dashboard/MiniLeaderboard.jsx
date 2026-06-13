@@ -53,7 +53,7 @@ const MiniLeaderboard = ({ periodId }) => {
     <Card className="p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold">Leaderboard SAW</h3>
+          <h3 className="text-sm font-bold">Leaderboard</h3>
           <p className="text-xs text-text-secondary">Top 5 penerima berdasarkan nilai preferensi</p>
         </div>
         <button type="button" className="text-xs font-semibold text-primary-orange">

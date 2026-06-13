@@ -3,6 +3,7 @@ import DonutChartWidget from "../../components/charts/DonutChart";
 import Card from "../../components/ui/Card";
 import ProgressBar from "../../components/ui/ProgressBar";
 
+
 const BAR_DATA = [
   { label: "Sen", value: 24 },
   { label: "Sel", value: 32 },

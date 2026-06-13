@@ -5,6 +5,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Drawer from "../../components/ui/Drawer";
+import Skeleton from "../../components/ui/Skeleton";
 import { useApi } from "../../hooks/useApi";
 
 const PengaturanPage = () => {
@@ -268,8 +269,36 @@ const PengaturanPage = () => {
   if (isLoading) {
     return (
       <AppShell title="Pengaturan" subtitle="Profil desa, nomor surat, dan konfigurasi periode." showRightPanel={false}>
-        <div className="flex h-64 items-center justify-center">
-          <p className="text-sm text-text-secondary">Memuat data pengaturan...</p>
+        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+          <Card className="p-4">
+            <Skeleton className="h-5 w-32 mb-2" />
+            <Skeleton className="h-4 w-64 mb-4" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="mt-4 flex gap-3">
+              <Skeleton className="h-10 w-32 rounded-button" />
+              <Skeleton className="h-10 w-32 rounded-button" />
+            </div>
+          </Card>
+          <div className="space-y-4">
+            <Card className="p-4">
+              <Skeleton className="h-5 w-32 mb-4" />
+              <Skeleton className="h-10 w-full mb-4" />
+              <div className="flex gap-2">
+                <Skeleton className="h-10 w-24 rounded-button" />
+                <Skeleton className="h-10 w-24 rounded-button" />
+              </div>
+            </Card>
+            <Card className="p-4">
+              <Skeleton className="h-5 w-40 mb-4" />
+              <Skeleton className="h-16 w-32 mb-4" />
+              <Skeleton className="h-10 w-32 rounded-button" />
+            </Card>
+          </div>
         </div>
       </AppShell>
     );

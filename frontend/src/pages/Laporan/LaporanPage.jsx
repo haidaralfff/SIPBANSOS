@@ -6,6 +6,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Drawer from "../../components/ui/Drawer";
+import Skeleton from "../../components/ui/Skeleton";
 
 const REPORTS = [
   {
@@ -578,8 +579,27 @@ const LaporanPage = () => {
             subtitle="Pratinjau data aktual yang tersimpan di dalam database."
           >
             {isLoadingPreview ? (
-              <div className="py-12 text-center text-sm text-text-secondary">
-                Memuat pratinjau data...
+              <div className="overflow-x-auto pb-12">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-text-secondary">
+                      <th className="py-2"><Skeleton className="h-4 w-12" /></th>
+                      <th className="py-2"><Skeleton className="h-4 w-32" /></th>
+                      <th className="py-2"><Skeleton className="h-4 w-24" /></th>
+                      <th className="py-2"><Skeleton className="h-4 w-20" /></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {[...Array(5)].map((_, i) => (
+                      <tr key={`skeleton-${i}`}>
+                        <td className="py-2.5"><Skeleton className="h-4 w-8" /></td>
+                        <td className="py-2.5"><Skeleton className="h-4 w-32" /></td>
+                        <td className="py-2.5"><Skeleton className="h-4 w-24" /></td>
+                        <td className="py-2.5"><Skeleton className="h-4 w-16" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : previewData.length === 0 ? (
               <div className="py-12 text-center text-sm text-text-secondary bg-background/50 rounded-xl p-6">
