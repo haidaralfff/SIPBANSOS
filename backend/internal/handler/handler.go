@@ -86,6 +86,35 @@ type sawRunRequest struct {
 	BobotID   string `json:"bobot_id"`
 }
 
+func (h *Handler) DebugDB(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	err := h.db.Ping(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "ping failed: " + err.Error(),
+		})
+		return
+	}
+
+	var one int
+	err = h.db.QueryRow(ctx, "SELECT 1").Scan(&one)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "query_error",
+			"error":  "query failed: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "ok",
+		"db":     "connected",
+	})
+}
+
 // Auth handlers
 func (h *Handler) Login(c *gin.Context) {
 	var req loginRequest
