@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import StatCard from "../../components/charts/StatCard";
 import Skeleton from "../../components/ui/Skeleton";
 import { useApi } from "../../hooks/useApi";
+import { formatNumber } from "../../utils/formatter";
 
 const PeopleIcon = (
   <svg className="h-5 w-5 text-primary-orange" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -56,19 +57,17 @@ const OverviewCards = ({ periodId }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!periodId) return;
     const fetchData = async () => {
       setIsLoading(true);
       const [summaryRes, wargaRes] = await Promise.all([
-        getSummary(periodId),
+        periodId ? getSummary(periodId) : Promise.resolve({ success: false }),
         getWarga({ limit: 1 })
       ]);
 
-      const totalWarga = wargaRes.success && wargaRes.data ? wargaRes.data.length : 0; // Sebenarnya butuh total keseluruhan, sementara limit 1 tapi cek length
-      // Idealnya getWarga mereturn total items, misal dari res.total
+      const totalWarga = wargaRes.success && wargaRes.total ? wargaRes.total : 0;
 
       let dalamProses = 0;
-      let skorRata = "0.000";
+      let skorRata = "-";
 
       if (summaryRes.success && summaryRes.data) {
         dalamProses = summaryRes.data.total || 0;
@@ -77,7 +76,7 @@ const OverviewCards = ({ periodId }) => {
       setCardsData([
         {
           label: "Warga Terdata",
-          value: totalWarga > 0 ? "..." : "0", // Bisa juga ngambil dari count keseluruhan bila API support
+          value: formatNumber(totalWarga),
           delta: "Dari Database",
           tone: "orange",
           icon: PeopleIcon
@@ -85,7 +84,7 @@ const OverviewCards = ({ periodId }) => {
         {
           label: "Diproses di Periode",
           value: dalamProses.toString(),
-          delta: "Total",
+          delta: periodId ? "Total" : "Belum ada periode",
           tone: "blue",
           icon: ProcessIcon
         },

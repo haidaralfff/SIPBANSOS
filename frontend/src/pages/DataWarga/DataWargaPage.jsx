@@ -300,6 +300,8 @@ const DataWargaPage = () => {
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [total, setTotal] = useState(0);
+  const [statsData, setStatsData] = useState({ active_count: 0, pending_count: 0, missing_docs_count: 0 });
 
   const rtRwOptions = useMemo(() => {
     const unique = new Set(
@@ -339,11 +341,15 @@ const DataWargaPage = () => {
       if (!result.success) {
         setError(result.message || "Gagal memuat data warga.");
         setWarga([]);
+        setTotal(0);
+        setStatsData({ active_count: 0, pending_count: 0, missing_docs_count: 0 });
         setIsLoading(false);
         return;
       }
 
       setWarga(result.data.map(mapWargaResponse));
+      setTotal(result.total || 0);
+      setStatsData(result.stats || { active_count: 0, pending_count: 0, missing_docs_count: 0 });
       setIsLoading(false);
     };
 
@@ -363,11 +369,9 @@ const DataWargaPage = () => {
   }, [warga, selectedStatus, selectedVerification]);
 
   const stats = useMemo(() => {
-    const activeCount = warga.filter((item) => item.status === "Aktif").length;
-    const pendingCount = warga.filter((item) => item.verification === "Menunggu").length;
-    const missingDocs = warga.filter(
-      (item) => item.documents.ktp !== "Lengkap" || item.documents.kk !== "Lengkap"
-    ).length;
+    const activeCount = statsData.active_count;
+    const pendingCount = statsData.pending_count;
+    const missingDocs = statsData.missing_docs_count;
 
     return [
       {
@@ -392,9 +396,9 @@ const DataWargaPage = () => {
         note: "KTP atau KK belum sesuai."
       }
     ];
-  }, [warga]);
+  }, [statsData]);
 
-  const hasNextPage = warga.length === PAGE_SIZE;
+  const hasNextPage = page * PAGE_SIZE < total;
 
   const closeDrawer = () => {
     setSelectedWarga(null);
@@ -511,10 +515,14 @@ const DataWargaPage = () => {
     if (!result.success) {
       setError(result.message || "Gagal memuat data warga.");
       setWarga([]);
+      setTotal(0);
+      setStatsData({ active_count: 0, pending_count: 0, missing_docs_count: 0 });
       setIsLoading(false);
       return;
     }
     setWarga(result.data.map(mapWargaResponse));
+    setTotal(result.total || 0);
+    setStatsData(result.stats || { active_count: 0, pending_count: 0, missing_docs_count: 0 });
     setIsLoading(false);
   };
 
@@ -722,7 +730,7 @@ const DataWargaPage = () => {
 
         <div className="mt-4 flex flex-wrap items-center justify-between text-xs text-text-secondary">
           <span>
-            Menampilkan {filteredWarga.length} dari {formatNumber(warga.length)} data pada halaman ini
+            Menampilkan {filteredWarga.length} data pada halaman ini • Total {formatNumber(total)} data
           </span>
           <div className="flex items-center gap-2">
             <Button
