@@ -92,7 +92,9 @@ export const useApi = () => {
         success: true,
         data: payload?.data || [],
         page: payload?.page || page,
-        limit: payload?.limit || limit
+        limit: payload?.limit || limit,
+        total: payload?.total || 0,
+        stats: payload?.stats || { total: 0, active_count: 0, pending_count: 0, missing_docs_count: 0 }
       };
     },
     [request]

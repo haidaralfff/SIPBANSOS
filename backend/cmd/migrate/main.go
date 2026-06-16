@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"sort"
@@ -29,10 +30,13 @@ func main() {
 		log.Fatal("missing database connection string (use -dsn or DATABASE_URL)")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// Resolve hostname to IPv4 and rewrite DSN to force IPv4 connection.
+	resolvedDSN := resolveToIPv4(*dsn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	config, err := pgxpool.ParseConfig(*dsn)
+	config, err := pgxpool.ParseConfig(resolvedDSN)
 	if err != nil {
 		log.Fatalf("failed to parse dsn: %v", err)
 	}
@@ -65,6 +69,30 @@ func main() {
 		}
 		log.Printf("applied %s", file)
 	}
+}
+
+// resolveToIPv4 parses the DSN, resolves the hostname to an IPv4 address,
+// and returns a new DSN with the IPv4 address substituted in.
+// Falls back to the original DSN if resolution fails.
+func resolveToIPv4(dsn string) string {
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return dsn
+	}
+
+	host := config.ConnConfig.Host
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addrs, err := net.DefaultResolver.LookupIP(ctx, "ip4", host)
+	if err != nil || len(addrs) == 0 {
+		log.Printf("warning: could not resolve %s to IPv4, using original DSN: %v", host, err)
+		return dsn
+	}
+
+	ipv4 := addrs[0].String()
+	log.Printf("resolved %s → %s (IPv4)", host, ipv4)
+	return strings.Replace(dsn, host, ipv4, 1)
 }
 
 func migrationFiles(dir string) ([]string, error) {

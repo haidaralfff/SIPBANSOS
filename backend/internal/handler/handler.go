@@ -193,7 +193,7 @@ func (h *Handler) ListWarga(c *gin.Context) {
 		RW:    c.Query("rw"),
 	}
 
-	data, err := h.warga.List(c.Request.Context(), filter)
+	data, stats, err := h.warga.List(c.Request.Context(), filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list warga"})
 		return
@@ -203,6 +203,8 @@ func (h *Handler) ListWarga(c *gin.Context) {
 		"data":  data,
 		"page":  page,
 		"limit": limit,
+		"total": stats.Total,
+		"stats": stats,
 	})
 }
 

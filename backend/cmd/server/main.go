@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,7 +26,11 @@ func main() {
 		dsn = "postgres://postgres:password@localhost:5432/sipbansos?sslmode=disable"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Resolve hostname to IPv4 to avoid "no route to host" errors when DNS
+	// resolves Supabase hostnames to IPv6 on networks without IPv6 routing.
+	dsn = resolveToIPv4(dsn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	dbpool, err := pgxpool.New(ctx, dsn)
@@ -74,4 +80,28 @@ func parseDurationEnv(key string, fallback string) time.Duration {
 		d, _ = time.ParseDuration(fallback)
 	}
 	return d
+}
+
+// resolveToIPv4 parses the DSN, resolves the hostname to an IPv4 address,
+// and returns a new DSN with the IPv4 address substituted in.
+// Falls back to the original DSN if resolution fails.
+func resolveToIPv4(dsn string) string {
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return dsn
+	}
+
+	host := config.ConnConfig.Host
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addrs, err := net.DefaultResolver.LookupIP(ctx, "ip4", host)
+	if err != nil || len(addrs) == 0 {
+		log.Printf("warning: could not resolve %s to IPv4, using original: %v", host, err)
+		return dsn
+	}
+
+	ipv4 := addrs[0].String()
+	log.Printf("resolved %s → %s (IPv4)", host, ipv4)
+	return strings.Replace(dsn, host, ipv4, 1)
 }

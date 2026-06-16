@@ -21,6 +21,13 @@ type WargaFilter struct {
 	RW    string
 }
 
+type WargaStats struct {
+	Total            int `json:"total"`
+	ActiveCount      int `json:"active_count"`
+	PendingCount     int `json:"pending_count"`
+	MissingDocsCount int `json:"missing_docs_count"`
+}
+
 type WargaRepository struct {
 	db *pgxpool.Pool
 }
@@ -29,7 +36,7 @@ func NewWargaRepository(db *pgxpool.Pool) *WargaRepository {
 	return &WargaRepository{db: db}
 }
 
-func (r *WargaRepository) List(ctx context.Context, filter WargaFilter) ([]model.Warga, error) {
+func (r *WargaRepository) List(ctx context.Context, filter WargaFilter) ([]model.Warga, WargaStats, error) {
 	page := filter.Page
 	if page < 1 {
 		page = 1
@@ -40,7 +47,17 @@ func (r *WargaRepository) List(ctx context.Context, filter WargaFilter) ([]model
 	}
 	offset := (page - 1) * limit
 
-	base := `
+	baseCount := `
+		SELECT
+			COUNT(*) as total,
+			COUNT(CASE WHEN is_active = true THEN 1 END) as active_count,
+			COUNT(CASE WHEN (foto_ktp_url IS NULL OR foto_ktp_url = '') AND (foto_kk_url IS NULL OR foto_kk_url = '') THEN 1 END) as pending_count,
+			COUNT(CASE WHEN (foto_ktp_url IS NULL OR foto_ktp_url = '') OR (foto_kk_url IS NULL OR foto_kk_url = '') THEN 1 END) as missing_docs_count
+		FROM warga
+		WHERE deleted_at IS NULL
+	`
+
+	baseList := `
 		SELECT
 			id, nik, no_kk, nama_lengkap, tanggal_lahir, jenis_kelamin, alamat,
 			rt, rw, no_hp, foto_ktp_url, foto_kk_url,
@@ -70,16 +87,33 @@ func (r *WargaRepository) List(ctx context.Context, filter WargaFilter) ([]model
 		idx++
 	}
 
+	filterClauses := ""
 	if len(clauses) > 0 {
-		base += " AND " + strings.Join(clauses, " AND ")
+		filterClauses = " AND " + strings.Join(clauses, " AND ")
 	}
 
-	base += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", idx, idx+1)
-	args = append(args, limit, offset)
-
-	rows, err := r.db.Query(ctx, base, args...)
+	// 1. Get statistics
+	var stats WargaStats
+	err := r.db.QueryRow(ctx, baseCount+filterClauses, args...).Scan(
+		&stats.Total,
+		&stats.ActiveCount,
+		&stats.PendingCount,
+		&stats.MissingDocsCount,
+	)
 	if err != nil {
-		return nil, err
+		return nil, stats, err
+	}
+
+	// 2. Get paginated list
+	listArgs := make([]interface{}, len(args))
+	copy(listArgs, args)
+
+	listQuery := baseList + filterClauses + fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", idx, idx+1)
+	listArgs = append(listArgs, limit, offset)
+
+	rows, err := r.db.Query(ctx, listQuery, listArgs...)
+	if err != nil {
+		return nil, stats, err
 	}
 	defer rows.Close()
 
@@ -87,16 +121,16 @@ func (r *WargaRepository) List(ctx context.Context, filter WargaFilter) ([]model
 	for rows.Next() {
 		item, err := scanWarga(rows.Scan)
 		if err != nil {
-			return nil, err
+			return nil, stats, err
 		}
 		result = append(result, item)
 	}
 
 	if rows.Err() != nil {
-		return nil, rows.Err()
+		return nil, stats, rows.Err()
 	}
 
-	return result, nil
+	return result, stats, nil
 }
 
 func (r *WargaRepository) GetByID(ctx context.Context, id string) (*model.Warga, error) {
