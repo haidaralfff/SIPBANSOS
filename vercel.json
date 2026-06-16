@@ -6,7 +6,7 @@
       "framework": "vite"
     },
     "backend": {
-      "entrypoint": "backend/api/index.go",
+      "entrypoint": "backend/cmd/server/main.go",
       "routePrefix": "/_/backend"
     }
   },
