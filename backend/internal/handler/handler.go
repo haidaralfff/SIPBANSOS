@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -598,8 +599,20 @@ func (h *Handler) UploadFile(c *gin.Context) {
 		return
 	}
 
+	// On Vercel the root filesystem is read-only; use /tmp which is writable.
+	// Note: /tmp is ephemeral and not shared across instances — for persistent
+	// file storage, integrate with Supabase Storage or similar cloud storage.
+	uploadDir := "./uploads"
+	if os.Getenv("VERCEL") != "" {
+		uploadDir = "/tmp/uploads"
+	}
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat direktori upload: " + err.Error()})
+		return
+	}
+
 	filename := strconv.FormatInt(time.Now().UnixNano(), 10) + "_" + file.Filename
-	dst := "./uploads/" + filename
+	dst := uploadDir + "/" + filename
 
 	if err := c.SaveUploadedFile(file, dst); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file: " + err.Error()})
