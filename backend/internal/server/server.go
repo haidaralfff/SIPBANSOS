@@ -10,6 +10,7 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 	api := r.Group("/api/v1")
 	{
 		api.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+		api.GET("/debug-db", h.DebugDB)
 
 		auth := api.Group("/auth")
 		{

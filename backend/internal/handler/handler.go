@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -83,6 +84,35 @@ type sawRunRequest struct {
 	Kuota     int    `json:"kuota"`
 	PeriodeID string `json:"periode_id"`
 	BobotID   string `json:"bobot_id"`
+}
+
+func (h *Handler) DebugDB(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	err := h.db.Ping(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "ping failed: " + err.Error(),
+		})
+		return
+	}
+
+	var one int
+	err = h.db.QueryRow(ctx, "SELECT 1").Scan(&one)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "query_error",
+			"error":  "query failed: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "ok",
+		"db":     "connected",
+	})
 }
 
 // Auth handlers
@@ -598,8 +628,20 @@ func (h *Handler) UploadFile(c *gin.Context) {
 		return
 	}
 
+	// On Vercel the root filesystem is read-only; use /tmp which is writable.
+	// Note: /tmp is ephemeral and not shared across instances — for persistent
+	// file storage, integrate with Supabase Storage or similar cloud storage.
+	uploadDir := "./uploads"
+	if os.Getenv("VERCEL") != "" {
+		uploadDir = "/tmp/uploads"
+	}
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat direktori upload: " + err.Error()})
+		return
+	}
+
 	filename := strconv.FormatInt(time.Now().UnixNano(), 10) + "_" + file.Filename
-	dst := "./uploads/" + filename
+	dst := uploadDir + "/" + filename
 
 	if err := c.SaveUploadedFile(file, dst); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file: " + err.Error()})

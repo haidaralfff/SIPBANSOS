@@ -39,12 +39,17 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	if err := os.MkdirAll("./uploads", 0755); err != nil {
+	uploadDir := "./uploads"
+	if os.Getenv("VERCEL") == "1" {
+		uploadDir = "/tmp/uploads"
+	}
+
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		log.Fatalf("failed to create uploads directory: %v", err)
 	}
 
 	r := gin.Default()
-	r.Static("/api/v1/uploads", "./uploads")
+	r.Static("/api/v1/uploads", uploadDir)
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {

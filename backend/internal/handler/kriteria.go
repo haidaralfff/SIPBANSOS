@@ -60,8 +60,8 @@ type kriteriaUpdateRequest struct {
 var kriteriaDefinitions = []kriteriaDefinition{
 	{Code: "C1", Name: "Jumlah Anggota Keluarga", Type: "Benefit"},
 	{Code: "C2", Name: "Jumlah Tanggungan", Type: "Benefit"},
-	{Code: "C3", Name: "Pendidikan Kep. Keluarga", Type: "Benefit"},
-	{Code: "C4", Name: "Pekerjaan Kep. Keluarga", Type: "Benefit"},
+	{Code: "C3", Name: "Pendidikan Kep. Keluarga", Type: "Cost"},
+	{Code: "C4", Name: "Pekerjaan Kep. Keluarga", Type: "Cost"},
 	{Code: "C5", Name: "Status Rumah", Type: "Benefit"},
 	{Code: "C6", Name: "Luas Rumah (m²)", Type: "Cost"},
 	{Code: "C7", Name: "Daya Listrik (VA)", Type: "Cost"},
@@ -69,8 +69,8 @@ var kriteriaDefinitions = []kriteriaDefinition{
 	{Code: "C9", Name: "Tabungan (Rupiah)", Type: "Cost"},
 	{Code: "C10", Name: "Penghasilan per Bulan (Rp)", Type: "Cost"},
 	{Code: "C11", Name: "Pengeluaran per Bulan (Rp)", Type: "Benefit"},
-	{Code: "C12", Name: "Kondisi Dinding", Type: "Benefit"},
-	{Code: "C13", Name: "Akses Air", Type: "Benefit"},
+	{Code: "C12", Name: "Kondisi Dinding", Type: "Cost"},
+	{Code: "C13", Name: "Akses Air", Type: "Cost"},
 }
 
 func (h *Handler) ListKriteria(c *gin.Context) {

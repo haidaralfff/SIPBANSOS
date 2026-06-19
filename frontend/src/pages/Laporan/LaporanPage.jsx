@@ -98,8 +98,8 @@ const LaporanPage = () => {
   const getFullUrl = (path) => {
     if (!path) return "";
     if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-    return `${base.replace(/\/$/, "")}${path}`;
+    const base = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+    return `${base}${path}`;
   };
 
   const handlePreview = async (type) => {
