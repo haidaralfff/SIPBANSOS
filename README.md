@@ -249,13 +249,11 @@ SAW adalah metode pengambilan keputusan multi-kriteria yang menentukan nilai pre
 
 ## 📝 Catatan Pengembangan
 
-### Struktur Database
-
 13 kriteria kesejahteraan yang digunakan:
 - **C1**: Jumlah Anggota Keluarga (Benefit)
 - **C2**: Jumlah Tanggungan (Benefit)
-- **C3**: Pendidikan Kepala Keluarga (Benefit)
-- **C4**: Pekerjaan Kepala Keluarga (Benefit)
+- **C3**: Pendidikan Kepala Keluarga (Cost)
+- **C4**: Pekerjaan Kepala Keluarga (Cost)
 - **C5**: Status Rumah (Benefit)
 - **C6**: Luas Rumah (Cost)
 - **C7**: Daya Listrik (Cost)
@@ -263,8 +261,8 @@ SAW adalah metode pengambilan keputusan multi-kriteria yang menentukan nilai pre
 - **C9**: Tabungan (Cost)
 - **C10**: Penghasilan per Bulan (Cost)
 - **C11**: Pengeluaran per Bulan (Benefit)
-- **C12**: Kondisi Dinding (Benefit)
-- **C13**: Akses Air (Benefit)
+- **C12**: Kondisi Dinding (Cost)
+- **C13**: Akses Air (Cost)
 
 ---
 
