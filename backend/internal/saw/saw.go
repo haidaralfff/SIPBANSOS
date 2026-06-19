@@ -43,7 +43,10 @@ func HitungSAW(alternatifs []Alternatif, bobot [13]float64, kuota int) []HasilSA
 		}
 	}
 
-	isBenefit := [13]bool{true, true, true, true, true, false, false, false, false, false, true, true, true}
+	// C1, C2, C5, C11 -> Benefit (true)
+	// C3, C4, C6, C7, C8, C9, C10, C12, C13 -> Cost (false)
+	isBenefit := [13]bool{true, true, false, false, true, false, false, false, false, false, true, false, false}
+	
 	// normalize
 	norm := make([][13]float64, m)
 	for i := 0; i < m; i++ {
