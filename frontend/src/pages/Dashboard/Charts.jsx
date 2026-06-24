@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import BarChartWidget from "../../components/charts/BarChart";
 import DonutChartWidget from "../../components/charts/DonutChart";
 import Card from "../../components/ui/Card";
-import ProgressBar from "../../components/ui/ProgressBar";
 import { useApi } from "../../hooks/useApi";
 
 const BAR_DATA = [
@@ -21,32 +20,20 @@ const DONUT_DATA = [
   { name: "Tidak Lolos", value: 0 }
 ];
 
-const PROGRESS = [
-  { label: "Lengkap data RT/RW", value: 0 },
-  { label: "Verifikasi dokumen", value: 0 },
-  { label: "Sinkronisasi lapangan", value: 0 }
-];
-
 const Charts = ({ periodId }) => {
-  const { getSummary, getWeeklyActivity, getFieldProgress } = useApi();
+  const { getSummary, getWeeklyActivity } = useApi();
   const [donutData, setDonutData] = useState(DONUT_DATA);
   const [barData, setBarData] = useState(BAR_DATA);
-  const [progressData, setProgressData] = useState(PROGRESS);
 
   useEffect(() => {
     const fetchData = async () => {
-      const [weeklyRes, progressRes, summaryRes] = await Promise.all([
+      const [weeklyRes, summaryRes] = await Promise.all([
         getWeeklyActivity(),
-        getFieldProgress(),
         periodId ? getSummary(periodId) : Promise.resolve({ success: false })
       ]);
 
       if (weeklyRes.success && weeklyRes.data.length > 0) {
         setBarData(weeklyRes.data);
-      }
-
-      if (progressRes.success && progressRes.data.length > 0) {
-        setProgressData(progressRes.data);
       }
 
       if (summaryRes.success && summaryRes.summary) {
@@ -66,7 +53,7 @@ const Charts = ({ periodId }) => {
     };
 
     fetchData();
-  }, [periodId, getSummary, getWeeklyActivity, getFieldProgress]);
+  }, [periodId, getSummary, getWeeklyActivity]);
 
   const penerimaVal = donutData.find((d) => d.name === "Penerima")?.value ?? 0;
   const cadanganVal = donutData.find((d) => d.name === "Cadangan")?.value ?? 0;
@@ -121,26 +108,6 @@ const Charts = ({ periodId }) => {
             </span>
             <span className="font-semibold">{tidakLolosVal}</span>
           </div>
-        </div>
-      </Card>
-      <Card className="col-span-1 p-4 lg:col-span-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold">Progres Lapangan</h3>
-            <p className="text-xs text-text-secondary">Kendali proses pendataan berjalan</p>
-          </div>
-          <span className="rounded-full bg-secondary-green/15 px-3 py-1 text-xs font-semibold text-secondary-green">
-            Aktif
-          </span>
-        </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-3">
-          {progressData.map((item) => (
-            <div key={item.label} className="rounded-card bg-background/70 p-3">
-              <p className="text-xs text-text-secondary">{item.label}</p>
-              <p className="mt-2 text-sm font-semibold">{Math.round(item.value)}%</p>
-              <ProgressBar value={item.value} className="mt-2" />
-            </div>
-          ))}
         </div>
       </Card>
     </div>

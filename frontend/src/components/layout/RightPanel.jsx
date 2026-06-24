@@ -2,21 +2,24 @@ import { useEffect, useState } from "react";
 import Badge from "../ui/Badge";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
+import ProgressBar from "../ui/ProgressBar";
 import { useApi } from "../../hooks/useApi";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
 const RightPanel = () => {
-  const { getAuditLogs, getSchedules, createSchedule, getPeriods } = useApi();
+  const { getAuditLogs, getSchedules, createSchedule, getPeriods, getFieldProgress } = useApi();
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const [schedules, setSchedules] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [activePeriod, setActivePeriod] = useState(null);
+  const [progressData, setProgressData] = useState([]);
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(true);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(true);
 
   // Modal State for Schedule Creation
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,10 +64,20 @@ const RightPanel = () => {
     }
   };
 
+  const fetchFieldProgress = async () => {
+    setIsLoadingProgress(true);
+    const res = await getFieldProgress();
+    if (res.success) {
+      setProgressData(res.data);
+    }
+    setIsLoadingProgress(false);
+  };
+
   useEffect(() => {
     fetchSchedules();
     fetchAuditLogs();
     fetchActivePeriod();
+    fetchFieldProgress();
   }, [user]);
 
   const handleSubmitSchedule = async (e) => {
@@ -225,6 +238,41 @@ const RightPanel = () => {
                   </p>
                 </div>
                 <span className="mt-1.5 h-2 w-2 rounded-full bg-secondary-blue animate-pulse" />
+              </div>
+            ))
+          )}
+        </div>
+      </Card>
+
+      {/* CARD PROGRES LAPANGAN */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-text-primary">Progres Lapangan</h3>
+            <p className="text-xs text-text-secondary">Kendali proses pendataan berjalan</p>
+          </div>
+          <span className="rounded-full bg-secondary-green/15 px-3 py-1 text-xs font-semibold text-secondary-green">
+            Aktif
+          </span>
+        </div>
+        <div className="mt-4 space-y-3">
+          {isLoadingProgress ? (
+            [...Array(3)].map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 w-1/3 rounded bg-gray-250 animate-pulse" />
+                <div className="h-2 w-full rounded bg-gray-200 animate-pulse" />
+              </div>
+            ))
+          ) : progressData.length === 0 ? (
+            <p className="text-xs text-text-secondary text-center py-2">Belum ada progres data.</p>
+          ) : (
+            progressData.map((item) => (
+              <div key={item.label} className="rounded-card bg-background/50 p-2.5 border border-border/30">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-text-secondary font-medium">{item.label}</span>
+                  <span className="font-semibold text-text-primary">{Math.round(item.value)}%</span>
+                </div>
+                <ProgressBar value={item.value} className="mt-2" />
               </div>
             ))
           )}
