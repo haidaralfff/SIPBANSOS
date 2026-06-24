@@ -51,25 +51,16 @@ const Charts = ({ periodId }) => {
 
       if (summaryRes.success && summaryRes.summary) {
         const sum = summaryRes.summary;
-        const total = (sum.penerima || 0) + (sum.cadangan || 0) + (sum.tidak_lolos || 0);
-        if (total > 0) {
-          setDonutData([
-            { name: "Penerima", value: sum.penerima || 0 },
-            { name: "Cadangan", value: sum.cadangan || 0 },
-            { name: "Tidak Lolos", value: sum.tidak_lolos || 0 }
-          ]);
-        } else {
-          setDonutData([
-            { name: "Penerima", value: 150 },
-            { name: "Cadangan", value: 30 },
-            { name: "Tidak Lolos", value: 110 }
-          ]);
-        }
+        setDonutData([
+          { name: "Penerima", value: sum.penerima || 0 },
+          { name: "Cadangan", value: sum.cadangan || 0 },
+          { name: "Tidak Lolos", value: sum.tidak_lolos || 0 }
+        ]);
       } else {
         setDonutData([
-          { name: "Penerima", value: 150 },
-          { name: "Cadangan", value: 30 },
-          { name: "Tidak Lolos", value: 110 }
+          { name: "Penerima", value: 0 },
+          { name: "Cadangan", value: 0 },
+          { name: "Tidak Lolos", value: 0 }
         ]);
       }
     };

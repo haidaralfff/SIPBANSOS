@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/wahyutricahya/SIPBANSOS/backend/internal/saw"
 )
 
 func (h *Handler) ListPeriode(c *gin.Context) {
@@ -27,6 +29,8 @@ func (h *Handler) ReportRanking(c *gin.Context) {
     c.JSON(http.StatusBadRequest, gin.H{"error": "periode_id is required"})
     return
   }
+
+  _ = h.ensureSAWCalculated(c.Request.Context(), periodeID)
 
   status := strings.TrimSpace(c.Query("status"))
   limit := parseOptionalLimit(c.Query("limit"))
@@ -56,6 +60,8 @@ func (h *Handler) ReportSummary(c *gin.Context) {
     return
   }
 
+  _ = h.ensureSAWCalculated(c.Request.Context(), periodeID)
+
   summary, err := h.reports.GetSummary(c.Request.Context(), periodeID)
   if err != nil {
     c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load summary"})
@@ -71,6 +77,8 @@ func (h *Handler) ReportRekap(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "periode_id is required"})
 		return
 	}
+
+	_ = h.ensureSAWCalculated(c.Request.Context(), periodeID)
 
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT 
@@ -168,6 +176,10 @@ func (h *Handler) ExportReport(c *gin.Context) {
 	if reportType != "audit" && periodeID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "periode_id is required"})
 		return
+	}
+
+	if reportType != "audit" && periodeID != "" {
+		_ = h.ensureSAWCalculated(ctx, periodeID)
 	}
 
 	filename := fmt.Sprintf("laporan_%s_%s.csv", reportType, time.Now().Format("20060102"))
@@ -441,4 +453,111 @@ func (h *Handler) GetFieldProgress(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": list})
+}
+
+func (h *Handler) ensureSAWCalculated(ctx context.Context, periodID string) error {
+	if periodID == "" {
+		return nil
+	}
+
+	// 1. Check if we already have records in hasil_saw for this period
+	var count int
+	err := h.db.QueryRow(ctx, "SELECT COUNT(*) FROM hasil_saw WHERE periode_id = $1", periodID).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check hasil_saw: %w", err)
+	}
+
+	if count > 0 {
+		return nil
+	}
+
+	// 2. Load period info
+	var periodName string
+	var periodKuota int
+	var bobotID string
+	err = h.db.QueryRow(ctx, "SELECT nama_periode, kuota, bobot_id FROM periode_bansos WHERE id = $1", periodID).Scan(&periodName, &periodKuota, &bobotID)
+	if err != nil {
+		return fmt.Errorf("failed to load active period: %w", err)
+	}
+
+	resolvedKuota := periodKuota
+	if resolvedKuota <= 0 {
+		resolvedKuota = 1
+	}
+
+	if bobotID == "" {
+		err = h.db.QueryRow(ctx, "SELECT id FROM bobot_kriteria ORDER BY created_at DESC LIMIT 1").Scan(&bobotID)
+		if err != nil {
+			return fmt.Errorf("no bobot version found: %w", err)
+		}
+	}
+
+	// 3. Load criteria weights
+	var b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13 float64
+	err = h.db.QueryRow(ctx, `
+		SELECT bobot_c1, bobot_c2, bobot_c3, bobot_c4, bobot_c5, bobot_c6, bobot_c7, bobot_c8, bobot_c9, bobot_c10, bobot_c11, bobot_c12, bobot_c13
+		FROM bobot_kriteria WHERE id = $1
+	`, bobotID).Scan(&b1, &b2, &b3, &b4, &b5, &b6, &b7, &b8, &b9, &b10, &b11, &b12, &b13)
+	if err != nil {
+		return fmt.Errorf("failed to load bobot kriteria: %w", err)
+	}
+	bobot := [13]float64{b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13}
+
+	// 4. Load active warga with KTP and KK
+	rows, err := h.db.Query(ctx, `
+		SELECT id, nama_lengkap, c1_value, c2_value, c3_value, c4_value, c5_value, c6_value, c7_value, c8_value, c9_value, c10_value, c11_value, c12_value, c13_value
+		FROM warga
+		WHERE deleted_at IS NULL AND is_active = true AND foto_ktp_url IS NOT NULL AND foto_ktp_url <> '' AND foto_kk_url IS NOT NULL AND foto_kk_url <> ''
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to load warga: %w", err)
+	}
+	defer rows.Close()
+
+	var alternatifs []saw.Alternatif
+	for rows.Next() {
+		var a saw.Alternatif
+		var c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13 float64
+		err := rows.Scan(&a.ID, &a.Nama, &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10, &c11, &c12, &c13)
+		if err != nil {
+			return fmt.Errorf("failed to scan warga: %w", err)
+		}
+		a.Nilai = [13]float64{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13}
+		alternatifs = append(alternatifs, a)
+	}
+
+	if len(alternatifs) == 0 {
+		return nil
+	}
+
+	// 5. Calculate SAW
+	hasil := saw.HitungSAW(alternatifs, bobot, resolvedKuota)
+
+	// 6. Save results
+	tx, err := h.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, "DELETE FROM hasil_saw WHERE periode_id = $1", periodID)
+	if err != nil {
+		return fmt.Errorf("failed to delete old hasil_saw: %w", err)
+	}
+
+	for _, res := range hasil {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO hasil_saw (periode_id, warga_id, nilai_vi, ranking, status)
+			VALUES ($1, $2, $3, $4, $5)
+		`, periodID, res.AlternatifID, res.Vi, res.Ranking, res.Status)
+		if err != nil {
+			return fmt.Errorf("failed to insert hasil_saw for %s: %w", res.Nama, err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }

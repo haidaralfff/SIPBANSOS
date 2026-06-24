@@ -476,7 +476,7 @@ export const useApi = () => {
     if (!response.ok) {
       return { success: false, message: payload?.error || "Gagal memuat summary." };
     }
-    return { success: true, data: payload?.summary };
+    return { success: true, data: payload?.summary, summary: payload?.summary };
   }, [request]);
 
   const exportReport = useCallback(

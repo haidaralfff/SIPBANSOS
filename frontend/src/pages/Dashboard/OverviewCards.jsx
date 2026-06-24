@@ -67,7 +67,7 @@ const OverviewCards = ({ periodId }) => {
       const totalWarga = wargaRes.success && wargaRes.total ? wargaRes.total : 0;
 
       let dalamProses = 0;
-      let skorRata = "0.812"; // mock fallback
+      let skorRata = "-";
 
       if (summaryRes.success && summaryRes.summary) {
         dalamProses = summaryRes.summary.total || 0;
@@ -87,14 +87,14 @@ const OverviewCards = ({ periodId }) => {
         {
           label: "Diproses di Periode",
           value: dalamProses.toString(),
-          delta: periodId ? "Total" : "Belum ada periode",
+          delta: periodId ? "Aktual" : "Belum ada periode",
           tone: "blue",
           icon: ProcessIcon
         },
         {
           label: "Skor Rata-rata",
           value: skorRata,
-          delta: periodId && summaryRes.summary?.rata_rata > 0 ? "Aktual" : "Contoh Data",
+          delta: periodId && skorRata !== "-" ? "Rata-rata Kelayakan" : "Belum dihitung",
           tone: "green",
           icon: ScoreIcon
         }

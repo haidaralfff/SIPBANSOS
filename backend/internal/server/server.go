@@ -62,12 +62,12 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 
 			protected.GET("/reports/weekly-activity", h.GetWeeklyActivity)
 			protected.GET("/reports/field-progress", h.GetFieldProgress)
+			protected.GET("/reports/periods", h.ListPeriode)
+			protected.GET("/reports/summary", h.ReportSummary)
 
 			reportGroup := protected.Group("/reports", middleware.RequireRoles("admin", "kepala_desa"))
 			{
-				reportGroup.GET("/periods", h.ListPeriode)
 				reportGroup.GET("/ranking", h.ReportRanking)
-				reportGroup.GET("/summary", h.ReportSummary)
 				reportGroup.GET("/rekap", h.ReportRekap)
 				reportGroup.GET("/audit", h.ListAuditLogs)
 				reportGroup.GET("/export", h.ExportReport)
