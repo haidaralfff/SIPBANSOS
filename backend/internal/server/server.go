@@ -60,11 +60,14 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 
 			protected.POST("/upload", h.UploadFile)
 
+			protected.GET("/reports/weekly-activity", h.GetWeeklyActivity)
+			protected.GET("/reports/field-progress", h.GetFieldProgress)
+			protected.GET("/reports/periods", h.ListPeriode)
+			protected.GET("/reports/summary", h.ReportSummary)
+
 			reportGroup := protected.Group("/reports", middleware.RequireRoles("admin", "kepala_desa"))
 			{
-				reportGroup.GET("/periods", h.ListPeriode)
 				reportGroup.GET("/ranking", h.ReportRanking)
-				reportGroup.GET("/summary", h.ReportSummary)
 				reportGroup.GET("/rekap", h.ReportRekap)
 				reportGroup.GET("/audit", h.ListAuditLogs)
 				reportGroup.GET("/export", h.ExportReport)
@@ -84,6 +87,15 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 				periodsGroup.PUT("/:id", h.UpdatePeriode)
 				periodsGroup.DELETE("/:id", h.DeletePeriode)
 			}
+
+			schedulesGroup := protected.Group("/schedules")
+			{
+				schedulesGroup.GET("", h.ListSchedules)
+				schedulesGroup.POST("", middleware.RequireRoles("admin"), h.CreateSchedule)
+				schedulesGroup.PUT("/:id", middleware.RequireRoles("admin"), h.UpdateSchedule)
+				schedulesGroup.DELETE("/:id", middleware.RequireRoles("admin"), h.DeleteSchedule)
+			}
+
 
 			usersGroup := protected.Group("/users", middleware.RequireRoles("admin"))
 			{

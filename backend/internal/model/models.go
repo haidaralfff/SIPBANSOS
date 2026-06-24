@@ -108,8 +108,19 @@ type HasilSAWReport struct {
 }
 
 type HasilSAWSummary struct {
-	Total      int `json:"total"`
-	Penerima   int `json:"penerima"`
-	Cadangan   int `json:"cadangan"`
-	TidakLolos int `json:"tidak_lolos"`
+	Total      int     `json:"total"`
+	Penerima   int     `json:"penerima"`
+	Cadangan   int     `json:"cadangan"`
+	TidakLolos int     `json:"tidak_lolos"`
+	RataRata   float64 `json:"rata_rata"`
 }
+
+type Schedule struct {
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	StartTime string    `json:"start_time"`
+	EndTime   string    `json:"end_time"`
+	Date      time.Time `json:"date"`
+	CreatedAt time.Time `json:"created_at"`
+}
+

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/wahyutricahya/SIPBANSOS/backend/internal/saw"
 )
 
 func (h *Handler) ListPeriode(c *gin.Context) {
@@ -27,6 +29,8 @@ func (h *Handler) ReportRanking(c *gin.Context) {
     c.JSON(http.StatusBadRequest, gin.H{"error": "periode_id is required"})
     return
   }
+
+  _ = h.ensureSAWCalculated(c.Request.Context(), periodeID)
 
   status := strings.TrimSpace(c.Query("status"))
   limit := parseOptionalLimit(c.Query("limit"))
@@ -56,6 +60,8 @@ func (h *Handler) ReportSummary(c *gin.Context) {
     return
   }
 
+  _ = h.ensureSAWCalculated(c.Request.Context(), periodeID)
+
   summary, err := h.reports.GetSummary(c.Request.Context(), periodeID)
   if err != nil {
     c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load summary"})
@@ -71,6 +77,8 @@ func (h *Handler) ReportRekap(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "periode_id is required"})
 		return
 	}
+
+	_ = h.ensureSAWCalculated(c.Request.Context(), periodeID)
 
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT 
@@ -116,13 +124,21 @@ func (h *Handler) ReportRekap(c *gin.Context) {
 
 func (h *Handler) ListAuditLogs(c *gin.Context) {
 	ctx := c.Request.Context()
+
+	limitVal := 1000
+	if l := strings.TrimSpace(c.Query("limit")); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limitVal = parsed
+		}
+	}
+
 	rows, err := h.db.Query(ctx, `
-		SELECT a.created_at, COALESCE(u.username, 'system'), a.aksi, a.tabel, a.record_id, a.ip_address
+		SELECT a.created_at, COALESCE(u.username, 'system'), a.aksi, COALESCE(a.tabel, ''), COALESCE(a.record_id::text, ''), COALESCE(a.ip_address::text, '')
 		FROM audit_log a
 		LEFT JOIN users u ON u.id = a.user_id
 		ORDER BY a.created_at DESC
-		LIMIT 1000
-	`)
+		LIMIT $1
+	`, limitVal)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load audit logs: " + err.Error()})
 		return
@@ -143,7 +159,7 @@ func (h *Handler) ListAuditLogs(c *gin.Context) {
 		var item auditItem
 		err := rows.Scan(&item.CreatedAt, &item.Username, &item.Aksi, &item.Tabel, &item.RecordID, &item.IPAddress)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to scan audit log"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to scan audit log: " + err.Error()})
 			return
 		}
 		logs = append(logs, item)
@@ -160,6 +176,10 @@ func (h *Handler) ExportReport(c *gin.Context) {
 	if reportType != "audit" && periodeID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "periode_id is required"})
 		return
+	}
+
+	if reportType != "audit" && periodeID != "" {
+		_ = h.ensureSAWCalculated(ctx, periodeID)
 	}
 
 	filename := fmt.Sprintf("laporan_%s_%s.csv", reportType, time.Now().Format("20060102"))
@@ -291,7 +311,7 @@ func (h *Handler) ExportReport(c *gin.Context) {
 		}
 
 		rows, err := h.db.Query(ctx, `
-			SELECT a.created_at, COALESCE(u.username, 'system'), a.aksi, a.tabel, a.record_id, a.ip_address
+			SELECT a.created_at, COALESCE(u.username, 'system'), a.aksi, COALESCE(a.tabel, ''), COALESCE(a.record_id::text, ''), COALESCE(a.ip_address::text, '')
 			FROM audit_log a
 			LEFT JOIN users u ON u.id = a.user_id
 			ORDER BY a.created_at DESC
@@ -331,4 +351,213 @@ func parseOptionalLimit(value string) int {
     return 0
   }
   return parsed
+}
+
+func (h *Handler) GetWeeklyActivity(c *gin.Context) {
+	ctx := c.Request.Context()
+	rows, err := h.db.Query(ctx, `
+		SELECT 
+			TRIM(TO_CHAR(created_at, 'Dy')) AS label,
+			COUNT(*) AS value
+		FROM audit_log
+		WHERE created_at >= NOW() - INTERVAL '7 days'
+		GROUP BY TO_CHAR(created_at, 'Dy'), DATE_TRUNC('day', created_at)
+		ORDER BY DATE_TRUNC('day', created_at) ASC;
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query weekly activity: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	dayMapping := map[string]string{
+		"Mon": "Sen",
+		"Tue": "Sel",
+		"Wed": "Rab",
+		"Thu": "Kam",
+		"Fri": "Jum",
+		"Sat": "Sab",
+		"Sun": "Min",
+	}
+
+	type activityItem struct {
+		Label string `json:"label"`
+		Value int    `json:"value"`
+	}
+
+	var list []activityItem
+	for rows.Next() {
+		var label string
+		var val int
+		if err := rows.Scan(&label, &val); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to scan activity"})
+			return
+		}
+
+		indLabel, exists := dayMapping[label]
+		if !exists {
+			indLabel = label
+		}
+
+		list = append(list, activityItem{
+			Label: indLabel,
+			Value: val,
+		})
+	}
+
+	// Fallback to empty week if no logs exist
+	if len(list) == 0 {
+		weekdays := []string{"Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"}
+		for _, w := range weekdays {
+			list = append(list, activityItem{Label: w, Value: 0})
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": list})
+}
+
+func (h *Handler) GetFieldProgress(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var totalWarga, docsComplete, rtRwComplete, surveyedComplete int
+	err := h.db.QueryRow(ctx, `
+		SELECT 
+			COUNT(*),
+			COUNT(CASE WHEN foto_ktp_url IS NOT NULL AND foto_ktp_url <> '' AND foto_kk_url IS NOT NULL AND foto_kk_url <> '' THEN 1 END),
+			COUNT(CASE WHEN rt IS NOT NULL AND rt <> '' AND rw IS NOT NULL AND rw <> '' THEN 1 END),
+			COUNT(CASE WHEN c1_value > 0 OR c2_value > 0 OR c10_value > 0 THEN 1 END)
+		FROM warga
+		WHERE deleted_at IS NULL
+	`).Scan(&totalWarga, &docsComplete, &rtRwComplete, &surveyedComplete)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query field progress: " + err.Error()})
+		return
+	}
+
+	var rtRwPct, docsPct, surveyedPct float64
+	if totalWarga > 0 {
+		rtRwPct = float64(rtRwComplete) / float64(totalWarga) * 100
+		docsPct = float64(docsComplete) / float64(totalWarga) * 100
+		surveyedPct = float64(surveyedComplete) / float64(totalWarga) * 100
+	}
+
+	type progressItem struct {
+		Label string  `json:"label"`
+		Value float64 `json:"value"`
+	}
+
+	list := []progressItem{
+		{Label: "Lengkap data RT/RW", Value: rtRwPct},
+		{Label: "Verifikasi dokumen", Value: docsPct},
+		{Label: "Sinkronisasi lapangan", Value: surveyedPct},
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": list})
+}
+
+func (h *Handler) ensureSAWCalculated(ctx context.Context, periodID string) error {
+	if periodID == "" {
+		return nil
+	}
+
+	// 1. Check if we already have records in hasil_saw for this period
+	var count int
+	err := h.db.QueryRow(ctx, "SELECT COUNT(*) FROM hasil_saw WHERE periode_id = $1", periodID).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check hasil_saw: %w", err)
+	}
+
+	if count > 0 {
+		return nil
+	}
+
+	// 2. Load period info
+	var periodName string
+	var periodKuota int
+	var bobotID string
+	err = h.db.QueryRow(ctx, "SELECT nama_periode, kuota, bobot_id FROM periode_bansos WHERE id = $1", periodID).Scan(&periodName, &periodKuota, &bobotID)
+	if err != nil {
+		return fmt.Errorf("failed to load active period: %w", err)
+	}
+
+	resolvedKuota := periodKuota
+	if resolvedKuota <= 0 {
+		resolvedKuota = 1
+	}
+
+	if bobotID == "" {
+		err = h.db.QueryRow(ctx, "SELECT id FROM bobot_kriteria ORDER BY created_at DESC LIMIT 1").Scan(&bobotID)
+		if err != nil {
+			return fmt.Errorf("no bobot version found: %w", err)
+		}
+	}
+
+	// 3. Load criteria weights
+	var b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13 float64
+	err = h.db.QueryRow(ctx, `
+		SELECT bobot_c1, bobot_c2, bobot_c3, bobot_c4, bobot_c5, bobot_c6, bobot_c7, bobot_c8, bobot_c9, bobot_c10, bobot_c11, bobot_c12, bobot_c13
+		FROM bobot_kriteria WHERE id = $1
+	`, bobotID).Scan(&b1, &b2, &b3, &b4, &b5, &b6, &b7, &b8, &b9, &b10, &b11, &b12, &b13)
+	if err != nil {
+		return fmt.Errorf("failed to load bobot kriteria: %w", err)
+	}
+	bobot := [13]float64{b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13}
+
+	// 4. Load active warga with KTP and KK
+	rows, err := h.db.Query(ctx, `
+		SELECT id, nama_lengkap, c1_value, c2_value, c3_value, c4_value, c5_value, c6_value, c7_value, c8_value, c9_value, c10_value, c11_value, c12_value, c13_value
+		FROM warga
+		WHERE deleted_at IS NULL AND is_active = true AND foto_ktp_url IS NOT NULL AND foto_ktp_url <> '' AND foto_kk_url IS NOT NULL AND foto_kk_url <> ''
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to load warga: %w", err)
+	}
+	defer rows.Close()
+
+	var alternatifs []saw.Alternatif
+	for rows.Next() {
+		var a saw.Alternatif
+		var c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13 float64
+		err := rows.Scan(&a.ID, &a.Nama, &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10, &c11, &c12, &c13)
+		if err != nil {
+			return fmt.Errorf("failed to scan warga: %w", err)
+		}
+		a.Nilai = [13]float64{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13}
+		alternatifs = append(alternatifs, a)
+	}
+
+	if len(alternatifs) == 0 {
+		return nil
+	}
+
+	// 5. Calculate SAW
+	hasil := saw.HitungSAW(alternatifs, bobot, resolvedKuota)
+
+	// 6. Save results
+	tx, err := h.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, "DELETE FROM hasil_saw WHERE periode_id = $1", periodID)
+	if err != nil {
+		return fmt.Errorf("failed to delete old hasil_saw: %w", err)
+	}
+
+	for _, res := range hasil {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO hasil_saw (periode_id, warga_id, nilai_vi, ranking, status)
+			VALUES ($1, $2, $3, $4, $5)
+		`, periodID, res.AlternatifID, res.Vi, res.Ranking, res.Status)
+		if err != nil {
+			return fmt.Errorf("failed to insert hasil_saw for %s: %w", res.Nama, err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }

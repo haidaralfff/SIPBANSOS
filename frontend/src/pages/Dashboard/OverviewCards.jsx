@@ -69,8 +69,11 @@ const OverviewCards = ({ periodId }) => {
       let dalamProses = 0;
       let skorRata = "-";
 
-      if (summaryRes.success && summaryRes.data) {
-        dalamProses = summaryRes.data.total || 0;
+      if (summaryRes.success && summaryRes.summary) {
+        dalamProses = summaryRes.summary.total || 0;
+        if (summaryRes.summary.rata_rata > 0) {
+          skorRata = summaryRes.summary.rata_rata.toFixed(3);
+        }
       }
 
       setCardsData([
@@ -84,14 +87,14 @@ const OverviewCards = ({ periodId }) => {
         {
           label: "Diproses di Periode",
           value: dalamProses.toString(),
-          delta: periodId ? "Total" : "Belum ada periode",
+          delta: periodId ? "Aktual" : "Belum ada periode",
           tone: "blue",
           icon: ProcessIcon
         },
         {
           label: "Skor Rata-rata",
           value: skorRata,
-          delta: "-",
+          delta: periodId && skorRata !== "-" ? "Rata-rata Kelayakan" : "Belum dihitung",
           tone: "green",
           icon: ScoreIcon
         }
