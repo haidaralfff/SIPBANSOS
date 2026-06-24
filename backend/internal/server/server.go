@@ -92,6 +92,8 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 			{
 				schedulesGroup.GET("", h.ListSchedules)
 				schedulesGroup.POST("", middleware.RequireRoles("admin"), h.CreateSchedule)
+				schedulesGroup.PUT("/:id", middleware.RequireRoles("admin"), h.UpdateSchedule)
+				schedulesGroup.DELETE("/:id", middleware.RequireRoles("admin"), h.DeleteSchedule)
 			}
 
 

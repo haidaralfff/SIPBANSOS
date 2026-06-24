@@ -604,6 +604,37 @@ export const useApi = () => {
     [request]
   );
 
+  const updateSchedule = useCallback(
+    async (id, data) => {
+      const response = await request(`/api/v1/schedules/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data)
+      });
+      const payload = await parseJson(response);
+
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal memperbarui jadwal." };
+      }
+      return { success: true, data: payload };
+    },
+    [request]
+  );
+
+  const deleteSchedule = useCallback(
+    async (id) => {
+      const response = await request(`/api/v1/schedules/${id}`, {
+        method: "DELETE"
+      });
+      const payload = await parseJson(response);
+
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal menghapus jadwal." };
+      }
+      return { success: true, data: payload };
+    },
+    [request]
+  );
+
   const getUsers = useCallback(async () => {
     const response = await request("/api/v1/users", {
       method: "GET"
@@ -688,6 +719,8 @@ export const useApi = () => {
     getFieldProgress,
     getSchedules,
     createSchedule,
+    updateSchedule,
+    deleteSchedule,
     getUsers,
     createUser,
     updateUser,

@@ -16,28 +16,30 @@ type scheduleRequest struct {
 	Date      string `json:"date" binding:"required"`       // format YYYY-MM-DD
 }
 
-// ListSchedules retrieves schedules for a given date (defaults to today)
+// ListSchedules retrieves schedules. If a date is provided, filters by it. Otherwise, returns all.
 func (h *Handler) ListSchedules(c *gin.Context) {
 	ctx := c.Request.Context()
 	dateParam := strings.TrimSpace(c.Query("date"))
 
-	if dateParam == "" {
-		dateParam = time.Now().Format("2006-01-02")
-	} else {
+	query := `
+		SELECT id, title, start_time::TEXT, end_time::TEXT, date, created_at
+		FROM schedules
+	`
+	var args []interface{}
+	if dateParam != "" {
 		// Validate date format YYYY-MM-DD
 		_, err := time.Parse("2006-01-02", dateParam)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "format tanggal harus YYYY-MM-DD"})
 			return
 		}
+		query += " WHERE date = $1 ORDER BY start_time ASC"
+		args = append(args, dateParam)
+	} else {
+		query += " ORDER BY date ASC, start_time ASC"
 	}
 
-	rows, err := h.db.Query(ctx, `
-		SELECT id, title, start_time::TEXT, end_time::TEXT, date, created_at
-		FROM schedules
-		WHERE date = $1
-		ORDER BY start_time ASC
-	`, dateParam)
+	rows, err := h.db.Query(ctx, query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal memuat jadwal: " + err.Error()})
 		return
@@ -126,5 +128,116 @@ func (h *Handler) CreateSchedule(c *gin.Context) {
 		"success": true,
 		"id":      newID,
 		"message": "jadwal baru berhasil ditambahkan",
+	})
+}
+
+// UpdateSchedule updates an existing schedule (Admin only)
+func (h *Handler) UpdateSchedule(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id jadwal wajib diisi"})
+		return
+	}
+
+	var req scheduleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "input tidak valid: " + err.Error()})
+		return
+	}
+
+	// Validate date
+	dateParsed, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "format tanggal harus YYYY-MM-DD"})
+		return
+	}
+
+	// Validate time format
+	startTimeStr := strings.TrimSpace(req.StartTime)
+	endTimeStr := strings.TrimSpace(req.EndTime)
+	if len(startTimeStr) < 5 || len(endTimeStr) < 5 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "format waktu tidak valid"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Verify existence
+	var count int
+	err = h.db.QueryRow(ctx, "SELECT COUNT(*) FROM schedules WHERE id = $1", id).Scan(&count)
+	if err != nil || count == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "jadwal tidak ditemukan"})
+		return
+	}
+
+	_, err = h.db.Exec(ctx, `
+		UPDATE schedules
+		SET title = $1, start_time = $2, end_time = $3, date = $4
+		WHERE id = $5
+	`, req.Title, startTimeStr, endTimeStr, dateParsed, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal memperbarui jadwal: " + err.Error()})
+		return
+	}
+
+	// Log audit trail
+	if userID, ok := c.Get("user_id"); ok {
+		_ = h.audit.Create(ctx, model.AuditLog{
+			UserID:    userID.(string),
+			Aksi:      "update",
+			Tabel:     "schedules",
+			RecordID:  id,
+			DataBaru:  mustJSON(req),
+			IPAddress: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "jadwal berhasil diperbarui",
+	})
+}
+
+// DeleteSchedule deletes an existing schedule (Admin only)
+func (h *Handler) DeleteSchedule(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id jadwal wajib diisi"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Verify existence
+	var title string
+	err := h.db.QueryRow(ctx, "SELECT title FROM schedules WHERE id = $1", id).Scan(&title)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "jadwal tidak ditemukan"})
+		return
+	}
+
+	_, err = h.db.Exec(ctx, "DELETE FROM schedules WHERE id = $1", id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal menghapus jadwal: " + err.Error()})
+		return
+	}
+
+	// Log audit trail
+	if userID, ok := c.Get("user_id"); ok {
+		_ = h.audit.Create(ctx, model.AuditLog{
+			UserID:    userID.(string),
+			Aksi:      "delete",
+			Tabel:     "schedules",
+			RecordID:  id,
+			DataLama:  mustJSON(gin.H{"title": title}),
+			IPAddress: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "jadwal berhasil dihapus",
 	})
 }

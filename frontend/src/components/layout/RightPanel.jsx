@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
 const RightPanel = () => {
-  const { getAuditLogs, getSchedules, createSchedule, getPeriods, getFieldProgress } = useApi();
+  const { getAuditLogs, getSchedules, createSchedule, updateSchedule, deleteSchedule, getPeriods, getFieldProgress } = useApi();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -21,8 +21,9 @@ const RightPanel = () => {
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
 
-  // Modal State for Schedule Creation
+  // Modal State for Schedule Creation & Editing
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
   const [title, setTitle] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -38,11 +39,20 @@ const RightPanel = () => {
 
   const fetchSchedules = async () => {
     setIsLoadingSchedules(true);
-    const res = await getSchedules(todayStr);
+    const res = await getSchedules(); // Fetch all schedules, not just today
     if (res.success) {
       setSchedules(res.data);
     }
     setIsLoadingSchedules(false);
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short"
+    });
   };
 
   const fetchAuditLogs = async () => {
@@ -80,6 +90,36 @@ const RightPanel = () => {
     fetchFieldProgress();
   }, [user]);
 
+  const handleAddClick = () => {
+    setEditingScheduleId(null);
+    setTitle("");
+    setStartTime("");
+    setEndTime("");
+    setDate(new Date().toISOString().split("T")[0]);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (schedule) => {
+    setEditingScheduleId(schedule.id);
+    setTitle(schedule.title);
+    setStartTime(schedule.start_time);
+    setEndTime(schedule.end_time);
+    setDate(schedule.date.split("T")[0]);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Apakah Anda yakin ingin menghapus jadwal ini?")) {
+      const res = await deleteSchedule(id);
+      if (res.success) {
+        toast.success("Jadwal berhasil dihapus!");
+        fetchSchedules();
+      } else {
+        toast.error(res.message || "Gagal menghapus jadwal.");
+      }
+    }
+  };
+
   const handleSubmitSchedule = async (e) => {
     e.preventDefault();
     if (!title.trim() || !startTime || !endTime || !date) {
@@ -88,23 +128,34 @@ const RightPanel = () => {
     }
 
     setIsSubmitting(true);
-    const res = await createSchedule({
-      title: title.trim(),
-      start_time: startTime,
-      end_time: endTime,
-      date
-    });
+    let res;
+    if (editingScheduleId) {
+      res = await updateSchedule(editingScheduleId, {
+        title: title.trim(),
+        start_time: startTime,
+        end_time: endTime,
+        date
+      });
+    } else {
+      res = await createSchedule({
+        title: title.trim(),
+        start_time: startTime,
+        end_time: endTime,
+        date
+      });
+    }
     setIsSubmitting(false);
 
     if (res.success) {
-      toast.success("Jadwal baru berhasil dibuat!");
+      toast.success(editingScheduleId ? "Jadwal berhasil diperbarui!" : "Jadwal baru berhasil dibuat!");
       setIsModalOpen(false);
       setTitle("");
       setStartTime("");
       setEndTime("");
+      setEditingScheduleId(null);
       fetchSchedules();
     } else {
-      toast.error(res.message || "Gagal membuat jadwal.");
+      toast.error(res.message || "Gagal menyimpan jadwal.");
     }
   };
 
@@ -203,18 +254,17 @@ const RightPanel = () => {
       <Card className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold">Jadwal Hari Ini</h3>
+            <h3 className="text-sm font-bold text-text-primary">Jadwal Kegiatan</h3>
             {user?.role === "admin" && (
               <button
                 type="button"
-                onClick={() => setIsModalOpen(true)}
-                className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-orange text-white hover:bg-primary-orange/80 focus:outline-none"
+                onClick={handleAddClick}
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-orange text-white text-xs font-bold hover:bg-primary-orange/80 focus:outline-none pb-0.5 leading-none"
               >
-                <span className="text-xs font-bold leading-none">+</span>
+                +
               </button>
             )}
           </div>
-          <span className="text-xs text-text-secondary">{formattedToday}</span>
         </div>
         <div className="mt-4 space-y-3">
           {isLoadingSchedules ? (
@@ -226,18 +276,40 @@ const RightPanel = () => {
             ))
           ) : schedules.length === 0 ? (
             <p className="text-xs text-text-secondary text-center py-4 bg-background/50 rounded-xl border border-dashed border-border">
-              Tidak ada jadwal hari ini.
+              Tidak ada jadwal terdaftar.
             </p>
           ) : (
             schedules.map((item) => (
-              <div key={item.id} className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-text-primary">{item.title}</p>
-                  <p className="text-xs text-text-secondary">
-                    {formatTime(item.start_time)} - {formatTime(item.end_time)}
+              <div key={item.id} className="flex items-start justify-between border-b border-border/10 pb-2 last:border-0 last:pb-0 gap-2">
+                <div className="flex-1 min-w-0 pr-1">
+                  <p className="text-sm font-semibold text-text-primary truncate">{item.title}</p>
+                  <p className="text-[11px] text-text-secondary flex gap-2 items-center">
+                    <span className="font-medium text-primary-orange">{formatDate(item.date)}</span>
+                    <span className="h-1 w-1 rounded-full bg-border/60" />
+                    <span>{formatTime(item.start_time)} - {formatTime(item.end_time)}</span>
                   </p>
                 </div>
-                <span className="mt-1.5 h-2 w-2 rounded-full bg-secondary-blue animate-pulse" />
+                <div className="flex items-center gap-2">
+                  {user?.role === "admin" && (
+                    <div className="flex gap-1.5 mt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(item)}
+                        className="text-[10px] font-semibold text-secondary-blue hover:underline focus:outline-none"
+                      >
+                        Ubah
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        className="text-[10px] font-semibold text-accent-red hover:underline focus:outline-none"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  )}
+                  <span className="h-2 w-2 rounded-full bg-secondary-blue animate-pulse flex-shrink-0" />
+                </div>
               </div>
             ))
           )}
@@ -315,8 +387,12 @@ const RightPanel = () => {
           />
           <div className="relative w-full max-w-sm rounded-2xl bg-surface p-5 shadow-2xl z-10 border border-border space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-text-primary">Tambah Jadwal Baru</h3>
-              <p className="text-xs text-text-secondary mt-1">Jadwal ini akan muncul di sidebar dashboard.</p>
+              <h3 className="text-sm font-bold text-text-primary">
+                {editingScheduleId ? "Ubah Jadwal" : "Tambah Jadwal Baru"}
+              </h3>
+              <p className="text-xs text-text-secondary mt-1">
+                {editingScheduleId ? "Perbarui informasi kegiatan penyaluran." : "Jadwal ini akan muncul di sidebar dashboard."}
+              </p>
             </div>
 
             <form onSubmit={handleSubmitSchedule} className="space-y-3">
@@ -368,13 +444,16 @@ const RightPanel = () => {
 
               <div className="flex gap-2 pt-2">
                 <Button type="submit" className="flex-1 text-xs" disabled={isSubmitting}>
-                  {isSubmitting ? "Menyimpan..." : "Simpan Jadwal"}
+                  {isSubmitting ? "Menyimpan..." : (editingScheduleId ? "Perbarui Jadwal" : "Simpan Jadwal")}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   className="flex-1 text-xs"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingScheduleId(null);
+                  }}
                 >
                   Batal
                 </Button>
