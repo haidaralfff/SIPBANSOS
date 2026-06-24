@@ -67,10 +67,13 @@ const OverviewCards = ({ periodId }) => {
       const totalWarga = wargaRes.success && wargaRes.total ? wargaRes.total : 0;
 
       let dalamProses = 0;
-      let skorRata = "-";
+      let skorRata = "0.812"; // mock fallback
 
-      if (summaryRes.success && summaryRes.data) {
-        dalamProses = summaryRes.data.total || 0;
+      if (summaryRes.success && summaryRes.summary) {
+        dalamProses = summaryRes.summary.total || 0;
+        if (summaryRes.summary.rata_rata > 0) {
+          skorRata = summaryRes.summary.rata_rata.toFixed(3);
+        }
       }
 
       setCardsData([
@@ -91,7 +94,7 @@ const OverviewCards = ({ periodId }) => {
         {
           label: "Skor Rata-rata",
           value: skorRata,
-          delta: "-",
+          delta: periodId && summaryRes.summary?.rata_rata > 0 ? "Aktual" : "Contoh Data",
           tone: "green",
           icon: ScoreIcon
         }

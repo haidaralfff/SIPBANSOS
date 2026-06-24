@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import AppShell from "../../components/layout/AppShell";
 import { useApi } from "../../hooks/useApi";
@@ -41,6 +42,7 @@ const REPORTS = [
 
 const LaporanPage = () => {
   const { getPeriods, getRanking, getRekap, getAuditLogs, exportReport, getSettings } = useApi();
+  const [searchParams] = useSearchParams();
   
   const [periods, setPeriods] = useState([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState("");
@@ -75,6 +77,14 @@ const LaporanPage = () => {
     };
     fetchPeriodsAndSettings();
   }, [getPeriods, getSettings]);
+
+  useEffect(() => {
+    const preview = searchParams.get("preview");
+    if (preview === "audit") {
+      handlePreview("audit");
+    }
+  }, [searchParams]);
+
 
   const generateSKNumber = (format, number, villageName) => {
     const currentFormat = format || "[NOMOR]/[KODE-DESA]/[BULAN-ROMAWI]/[TAHUN]";

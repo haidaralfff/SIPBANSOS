@@ -526,17 +526,83 @@ export const useApi = () => {
     [request]
   );
 
-  const getAuditLogs = useCallback(async () => {
-    const response = await request("/api/v1/reports/audit", {
+  const getAuditLogs = useCallback(
+    async ({ limit } = {}) => {
+      let url = "/api/v1/reports/audit";
+      if (limit) {
+        url += `?limit=${limit}`;
+      }
+      const response = await request(url, {
+        method: "GET"
+      });
+      const payload = await parseJson(response);
+
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal memuat log audit." };
+      }
+      return { success: true, data: payload?.data || [] };
+    },
+    [request]
+  );
+
+  const getWeeklyActivity = useCallback(async () => {
+    const response = await request("/api/v1/reports/weekly-activity", {
       method: "GET"
     });
     const payload = await parseJson(response);
 
     if (!response.ok) {
-      return { success: false, message: payload?.error || "Gagal memuat log audit." };
+      return { success: false, message: payload?.error || "Gagal memuat aktivitas mingguan." };
     }
     return { success: true, data: payload?.data || [] };
   }, [request]);
+
+  const getFieldProgress = useCallback(async () => {
+    const response = await request("/api/v1/reports/field-progress", {
+      method: "GET"
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return { success: false, message: payload?.error || "Gagal memuat progres lapangan." };
+    }
+    return { success: true, data: payload?.data || [] };
+  }, [request]);
+
+  const getSchedules = useCallback(
+    async (date = "") => {
+      let url = "/api/v1/schedules";
+      if (date) {
+        url += `?date=${encodeURIComponent(date)}`;
+      }
+      const response = await request(url, {
+        method: "GET"
+      });
+      const payload = await parseJson(response);
+
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal memuat jadwal." };
+      }
+      return { success: true, data: payload?.data || [] };
+    },
+    [request]
+  );
+
+  const createSchedule = useCallback(
+    async (data) => {
+      const response = await request("/api/v1/schedules", {
+        method: "POST",
+        body: JSON.stringify(data)
+      });
+      const payload = await parseJson(response);
+
+      if (!response.ok) {
+        return { success: false, message: payload?.error || "Gagal membuat jadwal baru." };
+      }
+      return { success: true, data: payload };
+    },
+    [request]
+  );
 
   const getUsers = useCallback(async () => {
     const response = await request("/api/v1/users", {
@@ -618,6 +684,10 @@ export const useApi = () => {
     exportReport,
     getRekap,
     getAuditLogs,
+    getWeeklyActivity,
+    getFieldProgress,
+    getSchedules,
+    createSchedule,
     getUsers,
     createUser,
     updateUser,

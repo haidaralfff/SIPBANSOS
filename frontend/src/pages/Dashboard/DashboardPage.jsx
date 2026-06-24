@@ -28,7 +28,7 @@ const DashboardPage = () => {
       subtitle={selectedPeriod ? `Ringkasan penyaluran BLT untuk periode ${selectedPeriod.nama_periode}.` : "Ringkasan penyaluran BLT."}
     >
       <OverviewCards periodId={selectedPeriod?.id} />
-      <Charts />
+      <Charts periodId={selectedPeriod?.id} />
       <MiniLeaderboard periodId={selectedPeriod?.id} />
     </AppShell>
   );

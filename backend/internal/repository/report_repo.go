@@ -152,5 +152,12 @@ func (r *ReportRepository) GetSummary(ctx context.Context, periodeID string) (mo
     return model.HasilSAWSummary{}, rows.Err()
   }
 
+  // Fetch average nilai_vi
+  var avg float64
+  err = r.db.QueryRow(ctx, "SELECT COALESCE(AVG(nilai_vi), 0.0) FROM hasil_saw WHERE periode_id = $1", periodeID).Scan(&avg)
+  if err == nil {
+    summary.RataRata = avg
+  }
+
   return summary, nil
 }

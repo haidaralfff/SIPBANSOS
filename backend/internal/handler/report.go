@@ -116,13 +116,21 @@ func (h *Handler) ReportRekap(c *gin.Context) {
 
 func (h *Handler) ListAuditLogs(c *gin.Context) {
 	ctx := c.Request.Context()
+
+	limitVal := 1000
+	if l := strings.TrimSpace(c.Query("limit")); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limitVal = parsed
+		}
+	}
+
 	rows, err := h.db.Query(ctx, `
-		SELECT a.created_at, COALESCE(u.username, 'system'), a.aksi, a.tabel, a.record_id, a.ip_address
+		SELECT a.created_at, COALESCE(u.username, 'system'), a.aksi, COALESCE(a.tabel, ''), COALESCE(a.record_id::text, ''), COALESCE(a.ip_address::text, '')
 		FROM audit_log a
 		LEFT JOIN users u ON u.id = a.user_id
 		ORDER BY a.created_at DESC
-		LIMIT 1000
-	`)
+		LIMIT $1
+	`, limitVal)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load audit logs: " + err.Error()})
 		return
@@ -143,7 +151,7 @@ func (h *Handler) ListAuditLogs(c *gin.Context) {
 		var item auditItem
 		err := rows.Scan(&item.CreatedAt, &item.Username, &item.Aksi, &item.Tabel, &item.RecordID, &item.IPAddress)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to scan audit log"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to scan audit log: " + err.Error()})
 			return
 		}
 		logs = append(logs, item)
@@ -291,7 +299,7 @@ func (h *Handler) ExportReport(c *gin.Context) {
 		}
 
 		rows, err := h.db.Query(ctx, `
-			SELECT a.created_at, COALESCE(u.username, 'system'), a.aksi, a.tabel, a.record_id, a.ip_address
+			SELECT a.created_at, COALESCE(u.username, 'system'), a.aksi, COALESCE(a.tabel, ''), COALESCE(a.record_id::text, ''), COALESCE(a.ip_address::text, '')
 			FROM audit_log a
 			LEFT JOIN users u ON u.id = a.user_id
 			ORDER BY a.created_at DESC
@@ -331,4 +339,106 @@ func parseOptionalLimit(value string) int {
     return 0
   }
   return parsed
+}
+
+func (h *Handler) GetWeeklyActivity(c *gin.Context) {
+	ctx := c.Request.Context()
+	rows, err := h.db.Query(ctx, `
+		SELECT 
+			TRIM(TO_CHAR(created_at, 'Dy')) AS label,
+			COUNT(*) AS value
+		FROM audit_log
+		WHERE created_at >= NOW() - INTERVAL '7 days'
+		GROUP BY TO_CHAR(created_at, 'Dy'), DATE_TRUNC('day', created_at)
+		ORDER BY DATE_TRUNC('day', created_at) ASC;
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query weekly activity: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	dayMapping := map[string]string{
+		"Mon": "Sen",
+		"Tue": "Sel",
+		"Wed": "Rab",
+		"Thu": "Kam",
+		"Fri": "Jum",
+		"Sat": "Sab",
+		"Sun": "Min",
+	}
+
+	type activityItem struct {
+		Label string `json:"label"`
+		Value int    `json:"value"`
+	}
+
+	var list []activityItem
+	for rows.Next() {
+		var label string
+		var val int
+		if err := rows.Scan(&label, &val); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to scan activity"})
+			return
+		}
+
+		indLabel, exists := dayMapping[label]
+		if !exists {
+			indLabel = label
+		}
+
+		list = append(list, activityItem{
+			Label: indLabel,
+			Value: val,
+		})
+	}
+
+	// Fallback to empty week if no logs exist
+	if len(list) == 0 {
+		weekdays := []string{"Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"}
+		for _, w := range weekdays {
+			list = append(list, activityItem{Label: w, Value: 0})
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": list})
+}
+
+func (h *Handler) GetFieldProgress(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var totalWarga, docsComplete, rtRwComplete, surveyedComplete int
+	err := h.db.QueryRow(ctx, `
+		SELECT 
+			COUNT(*),
+			COUNT(CASE WHEN foto_ktp_url IS NOT NULL AND foto_ktp_url <> '' AND foto_kk_url IS NOT NULL AND foto_kk_url <> '' THEN 1 END),
+			COUNT(CASE WHEN rt IS NOT NULL AND rt <> '' AND rw IS NOT NULL AND rw <> '' THEN 1 END),
+			COUNT(CASE WHEN c1_value > 0 OR c2_value > 0 OR c10_value > 0 THEN 1 END)
+		FROM warga
+		WHERE deleted_at IS NULL
+	`).Scan(&totalWarga, &docsComplete, &rtRwComplete, &surveyedComplete)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query field progress: " + err.Error()})
+		return
+	}
+
+	var rtRwPct, docsPct, surveyedPct float64
+	if totalWarga > 0 {
+		rtRwPct = float64(rtRwComplete) / float64(totalWarga) * 100
+		docsPct = float64(docsComplete) / float64(totalWarga) * 100
+		surveyedPct = float64(surveyedComplete) / float64(totalWarga) * 100
+	}
+
+	type progressItem struct {
+		Label string  `json:"label"`
+		Value float64 `json:"value"`
+	}
+
+	list := []progressItem{
+		{Label: "Lengkap data RT/RW", Value: rtRwPct},
+		{Label: "Verifikasi dokumen", Value: docsPct},
+		{Label: "Sinkronisasi lapangan", Value: surveyedPct},
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": list})
 }

@@ -60,6 +60,9 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 
 			protected.POST("/upload", h.UploadFile)
 
+			protected.GET("/reports/weekly-activity", h.GetWeeklyActivity)
+			protected.GET("/reports/field-progress", h.GetFieldProgress)
+
 			reportGroup := protected.Group("/reports", middleware.RequireRoles("admin", "kepala_desa"))
 			{
 				reportGroup.GET("/periods", h.ListPeriode)
@@ -84,6 +87,13 @@ func RegisterRoutes(r *gin.Engine, h *handler.Handler, authMiddleware gin.Handle
 				periodsGroup.PUT("/:id", h.UpdatePeriode)
 				periodsGroup.DELETE("/:id", h.DeletePeriode)
 			}
+
+			schedulesGroup := protected.Group("/schedules")
+			{
+				schedulesGroup.GET("", h.ListSchedules)
+				schedulesGroup.POST("", middleware.RequireRoles("admin"), h.CreateSchedule)
+			}
+
 
 			usersGroup := protected.Group("/users", middleware.RequireRoles("admin"))
 			{
